@@ -22,6 +22,7 @@ function calculateScore(entry) {
     if (activities.includes('fasting')) total += 5;
     if (activities.includes('seva_of_guru')) total += 5;
   }
+  if (entry.jps_app?.read === true) { total += 5; }
   return Math.round(total * 10) / 10;
 }
 
@@ -50,6 +51,7 @@ export default function Dashboard() {
   const [activeModal, setActiveModal] = useState(null);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
+  const [jpsSaving, setJpsSaving] = useState(false);
 
   useEffect(() => {
     const name = localStorage.getItem('userName') || 'Devotee';
@@ -98,13 +100,39 @@ export default function Dashboard() {
     setActiveModal(null);
   };
 
+  const saveJpsApp = async (value) => {
+    setJpsSaving(true);
+    const sanghaRef = doc(db, 'sanghas', sanghaCode);
+    const snap = await getDoc(sanghaRef);
+    const existing = snap.data();
+    const currentEntry = existing?.members?.[userId]?.daily_entries?.[today] || {};
+    const updatedEntry = { ...currentEntry, jps_app: { read: value } };
+    updatedEntry.aggregate_score = calculateScore(updatedEntry);
+    await setDoc(sanghaRef, {
+      ...existing,
+      members: {
+        ...existing.members,
+        [userId]: {
+          ...existing.members[userId],
+          daily_entries: {
+            ...(existing.members[userId]?.daily_entries || {}),
+            [today]: updatedEntry
+          }
+        }
+      }
+    });
+    setJpsSaving(false);
+  };
+
   const myScore = todayEntry ? calculateScore(todayEntry) : 0;
+  const jpsRead = todayEntry?.jps_app?.read;
 
   const sortedMembers = Object.entries(members)
     .map(([uid, m]) => ({
       uid,
       name: m.name,
-      score: calculateScore(m.daily_entries?.[today] || {})
+      score: calculateScore(m.daily_entries?.[today] || {}),
+      jpsRead: m.daily_entries?.[today]?.jps_app?.read || false,
     }))
     .sort((a, b) => b.score - a.score);
 
@@ -152,7 +180,7 @@ export default function Dashboard() {
             <span style={{ color: 'white', fontSize: '42px', fontWeight: 'bold', lineHeight: 1 }}>
               {myScore}
             </span>
-            <span style={{ color: 'white', fontSize: '16px', opacity: 0.8 }}>/ 100</span>
+            <span style={{ color: 'white', fontSize: '16px', opacity: 0.8 }}>/ 105</span>
           </div>
           <div style={{
             background: 'rgba(255,255,255,0.3)', borderRadius: '999px',
@@ -160,11 +188,12 @@ export default function Dashboard() {
           }}>
             <div style={{
               background: 'white', borderRadius: '999px', height: '100%',
-              width: `${Math.min(myScore, 100)}%`, transition: 'width 0.5s ease'
+              width: `${Math.min((myScore / 105) * 100, 100)}%`,
+              transition: 'width 0.5s ease'
             }} />
           </div>
           <p style={{ color: 'white', fontSize: '10px', opacity: 0.8, margin: '6px 0 0' }}>
-            Chanting 70% | Reading 10% | Hearing 10% | Service 10%
+            Chanting 70% | Reading 10% | Hearing 10% | Service 10% | JPS App +5
           </p>
         </div>
       </div>
@@ -207,6 +236,11 @@ export default function Dashboard() {
                 <p style={{ margin: 0, fontSize: '14px', color: '#2D2D2D', fontWeight: index === 0 ? 'bold' : 'normal' }}>
                   {member.name} {member.uid === userId ? '(You)' : ''}
                 </p>
+                {member.jpsRead && (
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#22c55e' }}>
+                    📱 JPS App ✓
+                  </p>
+                )}
               </div>
               <span style={{ fontSize: '18px', fontWeight: 'bold', color: index === 0 ? '#FF9933' : '#2D2D2D' }}>
                 {member.score}
@@ -336,6 +370,80 @@ export default function Dashboard() {
                   fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif'
                 }}>✏️ Edit</button>
             </div>
+          </div>
+        </div>
+
+        {/* JPS App Card */}
+        <div style={{
+          background: jpsRead === true
+            ? 'linear-gradient(135deg, #f0fff4, #dcfce7)'
+            : jpsRead === false
+            ? 'linear-gradient(135deg, #fff5f5, #fee2e2)'
+            : 'white',
+          borderRadius: '20px', padding: '18px',
+          marginBottom: '12px', boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
+          border: jpsRead === true
+            ? '1px solid #86efac'
+            : jpsRead === false
+            ? '1px solid #fca5a5'
+            : '1px solid rgba(255,153,51,0.15)',
+          transition: 'all 0.3s ease'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>
+                📱 JPS App
+              </h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#6B6B6B' }}>
+                {jpsRead === true
+                  ? '✅ Read today — +5 bonus points!'
+                  : jpsRead === false
+                  ? '❌ Not read today'
+                  : 'Did you read JPS App today?'}
+              </p>
+            </div>
+            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#22c55e' }}>
+              {jpsRead === true ? '+5 pts' : '0 pts'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
+            <button
+              onClick={() => saveJpsApp(true)}
+              disabled={jpsSaving}
+              style={{
+                flex: 1, padding: '12px',
+                borderRadius: '999px',
+                background: jpsRead === true
+                  ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                  : '#f0fdf4',
+                border: jpsRead === true ? 'none' : '2px solid #22c55e',
+                color: jpsRead === true ? 'white' : '#22c55e',
+                fontSize: '15px', cursor: 'pointer',
+                fontFamily: 'Georgia, serif', fontWeight: 'bold',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              ✅ Yes
+            </button>
+            <button
+              onClick={() => saveJpsApp(false)}
+              disabled={jpsSaving}
+              style={{
+                flex: 1, padding: '12px',
+                borderRadius: '999px',
+                background: jpsRead === false
+                  ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  : '#fff5f5',
+                border: jpsRead === false ? 'none' : '2px solid #ef4444',
+                color: jpsRead === false ? 'white' : '#ef4444',
+                fontSize: '15px', cursor: 'pointer',
+                fontFamily: 'Georgia, serif', fontWeight: 'bold',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              ❌ No
+            </button>
           </div>
         </div>
 
