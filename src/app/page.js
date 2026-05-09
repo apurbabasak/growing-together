@@ -7,12 +7,12 @@ export default function Splash() {
   const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
-    // Rotate the Sudarshan Chakra
+    let angle = 0;
     const rotateInterval = setInterval(() => {
-      setRotation(prev => prev + 2);
+      angle += 1.5;
+      setRotation(angle);
     }, 16);
 
-    // Redirect after 3 seconds
     const timer = setTimeout(() => {
       const userName = localStorage.getItem('userName');
       const sanghaCode = localStorage.getItem('sanghaCode');
@@ -21,7 +21,7 @@ export default function Splash() {
       } else {
         router.push('/onboarding');
       }
-    }, 3000);
+    }, 3500);
 
     return () => {
       clearInterval(rotateInterval);
@@ -29,142 +29,210 @@ export default function Splash() {
     };
   }, []);
 
+  const spokes = Array.from({ length: 32 });
+  const innerSpokes = Array.from({ length: 32 });
+  const flames = Array.from({ length: 32 });
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #FFF8F0 0%, #FFF0E0 100%)',
+      background: 'linear-gradient(160deg, #1a0a00 0%, #2d1200 40%, #1a0800 100%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       fontFamily: 'Georgia, serif',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      position: 'relative'
     }}>
 
-      {/* Sudarshan Chakra */}
+      {/* Background glow */}
+      <div style={{
+        position: 'absolute',
+        width: '350px',
+        height: '350px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(255,140,0,0.25) 0%, transparent 70%)',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -60%)'
+      }} />
+
+      {/* Chakra Container */}
       <div style={{
         position: 'relative',
-        width: '180px',
-        height: '180px',
-        marginBottom: '32px'
+        width: '260px',
+        height: '260px',
+        marginBottom: '36px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
 
-        {/* Outer glow ring */}
+        {/* Rotating Chakra */}
         <div style={{
           position: 'absolute',
-          inset: '-10px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255,153,51,0.3) 0%, transparent 70%)',
-        }} />
-
-        {/* Rotating Chakra SVG */}
-        <div style={{
-          width: '180px',
-          height: '180px',
+          width: '260px',
+          height: '260px',
           transform: `rotate(${rotation}deg)`,
-          transition: 'transform 0.016s linear'
         }}>
-          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="180" height="180">
-            {/* Outer circle */}
-            <circle cx="100" cy="100" r="95" fill="none" stroke="#FF9933" strokeWidth="4" />
-            <circle cx="100" cy="100" r="85" fill="none" stroke="#FFD700" strokeWidth="2" />
+          <svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" width="260" height="260">
+            <defs>
+              <radialGradient id="goldGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FFF0A0" />
+                <stop offset="40%" stopColor="#FFD700" />
+                <stop offset="100%" stopColor="#B8860B" />
+              </radialGradient>
+              <radialGradient id="centerGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FFF8DC" />
+                <stop offset="60%" stopColor="#FFD700" />
+                <stop offset="100%" stopColor="#FF8C00" />
+              </radialGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
 
-            {/* 16 spokes */}
-            {Array.from({ length: 16 }).map((_, i) => {
-              const angle = (i * 360) / 16;
+            {/* Outermost flame ring - 32 flames */}
+            {flames.map((_, i) => {
+              const angle = (i * 360) / 32;
               const rad = (angle * Math.PI) / 180;
-              const x1 = 100 + 30 * Math.cos(rad);
-              const y1 = 100 + 30 * Math.sin(rad);
-              const x2 = 100 + 82 * Math.cos(rad);
-              const y2 = 100 + 82 * Math.sin(rad);
-              return (
-                <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke="#FF9933" strokeWidth="3" strokeLinecap="round" />
-              );
-            })}
-
-            {/* 16 triangular tips */}
-            {Array.from({ length: 16 }).map((_, i) => {
-              const angle = (i * 360) / 16;
-              const rad = (angle * Math.PI) / 180;
-              const radL = ((angle - 5) * Math.PI) / 180;
-              const radR = ((angle + 5) * Math.PI) / 180;
-              const tipX = 100 + 95 * Math.cos(rad);
-              const tipY = 100 + 95 * Math.sin(rad);
-              const leftX = 100 + 82 * Math.cos(radL);
-              const leftY = 100 + 82 * Math.sin(radL);
-              const rightX = 100 + 82 * Math.cos(radR);
-              const rightY = 100 + 82 * Math.sin(radR);
+              const radL = ((angle - 4) * Math.PI) / 180;
+              const radR = ((angle + 4) * Math.PI) / 180;
+              const tipX = 150 + 145 * Math.cos(rad);
+              const tipY = 150 + 145 * Math.sin(rad);
+              const baseL = 150 + 125 * Math.cos(radL);
+              const baseY_L = 150 + 125 * Math.sin(radL);
+              const baseR = 150 + 125 * Math.cos(radR);
+              const baseY_R = 150 + 125 * Math.sin(radR);
               return (
                 <polygon key={i}
-                  points={`${tipX},${tipY} ${leftX},${leftY} ${rightX},${rightY}`}
-                  fill="#FF9933" opacity="0.9" />
+                  points={`${tipX},${tipY} ${baseL},${baseY_L} ${baseR},${baseY_R}`}
+                  fill="url(#goldGrad)" filter="url(#glow)" opacity="0.95" />
               );
             })}
 
-            {/* Inner hub circle */}
-            <circle cx="100" cy="100" r="28" fill="#FF9933" opacity="0.15" />
-            <circle cx="100" cy="100" r="28" fill="none" stroke="#FF9933" strokeWidth="3" />
-            <circle cx="100" cy="100" r="18" fill="#FF9933" opacity="0.3" />
-            <circle cx="100" cy="100" r="10" fill="#FF9933" />
+            {/* Outer rim circles */}
+            <circle cx="150" cy="150" r="122" fill="none" stroke="#FFD700" strokeWidth="3.5" filter="url(#glow)" />
+            <circle cx="150" cy="150" r="115" fill="none" stroke="#B8860B" strokeWidth="1.5" />
+            <circle cx="150" cy="150" r="108" fill="none" stroke="#FFD700" strokeWidth="2" />
+
+            {/* 32 main spokes */}
+            {spokes.map((_, i) => {
+              const angle = (i * 360) / 32;
+              const rad = (angle * Math.PI) / 180;
+              const x1 = 150 + 42 * Math.cos(rad);
+              const y1 = 150 + 42 * Math.sin(rad);
+              const x2 = 150 + 106 * Math.cos(rad);
+              const y2 = 150 + 106 * Math.sin(rad);
+              return (
+                <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+                  stroke="url(#goldGrad)" strokeWidth="3.5"
+                  strokeLinecap="round" filter="url(#glow)" />
+              );
+            })}
+
+            {/* 32 secondary thin spokes between main spokes */}
+            {innerSpokes.map((_, i) => {
+              const angle = (i * 360) / 32 + 5.625;
+              const rad = (angle * Math.PI) / 180;
+              const x1 = 150 + 48 * Math.cos(rad);
+              const y1 = 150 + 48 * Math.sin(rad);
+              const x2 = 150 + 100 * Math.cos(rad);
+              const y2 = 150 + 100 * Math.sin(rad);
+              return (
+                <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+                  stroke="#FFD700" strokeWidth="1.2"
+                  strokeLinecap="round" opacity="0.6" />
+              );
+            })}
+
+            {/* Inner decorative ring */}
+            <circle cx="150" cy="150" r="50" fill="none" stroke="#FFD700" strokeWidth="2.5" filter="url(#glow)" />
+            <circle cx="150" cy="150" r="44" fill="none" stroke="#B8860B" strokeWidth="1" />
+
+            {/* Hub - 8 petal lotus */}
+            {Array.from({ length: 8 }).map((_, i) => {
+              const angle = (i * 360) / 8;
+              const rad = (angle * Math.PI) / 180;
+              const radL = ((angle - 18) * Math.PI) / 180;
+              const radR = ((angle + 18) * Math.PI) / 180;
+              const tipX = 150 + 40 * Math.cos(rad);
+              const tipY = 150 + 40 * Math.sin(rad);
+              const baseL = 150 + 20 * Math.cos(radL);
+              const baseYL = 150 + 20 * Math.sin(radL);
+              const baseR = 150 + 20 * Math.cos(radR);
+              const baseYR = 150 + 20 * Math.sin(radR);
+              return (
+                <polygon key={i}
+                  points={`${tipX},${tipY} ${baseL},${baseYL} ${baseR},${baseYR}`}
+                  fill="url(#goldGrad)" opacity="0.9" />
+              );
+            })}
+
+            {/* Center hub circle */}
+            <circle cx="150" cy="150" r="22" fill="url(#centerGrad)" filter="url(#glow)" />
+            <circle cx="150" cy="150" r="22" fill="none" stroke="#FFF0A0" strokeWidth="1.5" />
+            <circle cx="150" cy="150" r="14" fill="#FF8C00" opacity="0.5" />
+            <circle cx="150" cy="150" r="8" fill="#FFF8DC" />
+
           </svg>
         </div>
 
-        {/* Center Om symbol (not rotating) */}
+        {/* Center Om - fixed, not rotating */}
         <div style={{
           position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: '28px',
-          lineHeight: 1
+          fontSize: '26px',
+          zIndex: 10,
+          filter: 'drop-shadow(0 0 8px rgba(255,200,0,0.9))'
         }}>
           🕉️
         </div>
       </div>
 
-      {/* App name */}
+      {/* App Name */}
       <h1 style={{
-        color: '#FF9933',
+        color: '#FFD700',
         fontSize: '26px',
-        margin: '0 0 8px',
+        margin: '0 0 6px',
         fontWeight: 'bold',
         textAlign: 'center',
-        letterSpacing: '0.5px'
+        textShadow: '0 0 20px rgba(255,180,0,0.8)',
+        letterSpacing: '1px'
       }}>
         Growing Together
       </h1>
       <h2 style={{
-        color: '#FFD700',
-        fontSize: '16px',
-        margin: '0 0 16px',
+        color: '#FF9933',
+        fontSize: '15px',
+        margin: '0 0 14px',
         fontWeight: 'normal',
-        textAlign: 'center'
+        textAlign: 'center',
+        letterSpacing: '2px'
       }}>
-        to Eternity
+        TO ETERNITY
       </h2>
       <p style={{
-        color: '#6B6B6B',
-        fontSize: '14px',
+        color: '#FFD700',
+        fontSize: '13px',
         margin: 0,
-        textAlign: 'center'
+        opacity: 0.8,
+        textAlign: 'center',
+        letterSpacing: '1px'
       }}>
-        Hare Krishna 🙏
+        🙏 Hare Krishna 🙏
       </p>
 
-      {/* Loading dots */}
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        marginTop: '40px'
-      }}>
+      {/* Animated dots */}
+      <div style={{ display: 'flex', gap: '8px', marginTop: '36px' }}>
         {[0, 1, 2].map((i) => (
           <div key={i} style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: '#FF9933',
-            opacity: 0.4,
+            width: '8px', height: '8px', borderRadius: '50%',
+            background: '#FFD700',
             animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite`
           }} />
         ))}
@@ -172,8 +240,8 @@ export default function Splash() {
 
       <style>{`
         @keyframes pulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.4); }
         }
       `}</style>
     </div>
