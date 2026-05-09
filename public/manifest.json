@@ -1,0 +1,22 @@
+{
+  "name": "Growing Together to Eternity",
+  "short_name": "Growing Together",
+  "description": "Sadhana Sangha - Track your spiritual progress",
+  "start_url": "/onboarding",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FF9933",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
