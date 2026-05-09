@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 export default function Splash() {
   const router = useRouter();
@@ -9,20 +8,17 @@ export default function Splash() {
   const audioRef = useRef(null);
 
   useEffect(() => {
-    // Play flute music
     if (audioRef.current) {
       audioRef.current.volume = 0.5;
       audioRef.current.play().catch(() => {});
     }
 
-    // Rotate chakra
     let angle = 0;
     const rotateInterval = setInterval(() => {
       angle += 1.2;
       setRotation(angle);
     }, 16);
 
-    // Redirect after 4 seconds
     const timer = setTimeout(() => {
       const userName = localStorage.getItem('userName');
       const sanghaCode = localStorage.getItem('sanghaCode');
@@ -52,12 +48,10 @@ export default function Splash() {
       position: 'relative'
     }}>
 
-      {/* Flute audio */}
-      <audio ref={audioRef} loop>
+      <audio ref={audioRef} loop preload="auto">
         <source src="/flute.mp3" type="audio/mpeg" />
       </audio>
 
-      {/* Background glow */}
       <div style={{
         position: 'absolute',
         width: '400px', height: '400px',
@@ -68,14 +62,12 @@ export default function Splash() {
         pointerEvents: 'none'
       }} />
 
-      {/* Spinning Chakra Image */}
       <div style={{
         width: '240px', height: '240px',
         position: 'relative',
         marginBottom: '32px',
         display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
-        {/* Rotating image */}
         <img
           src="/chakra.png"
           alt="Sudarshan Chakra"
@@ -90,7 +82,6 @@ export default function Splash() {
         />
       </div>
 
-      {/* App Name */}
       <h1 style={{
         color: '#FFD700',
         fontSize: '26px',
@@ -123,7 +114,6 @@ export default function Splash() {
         🙏 Hare Krishna 🙏
       </p>
 
-      {/* Animated dots */}
       <div style={{ display: 'flex', gap: '8px', marginTop: '36px' }}>
         {[0, 1, 2].map((i) => (
           <div key={i} style={{

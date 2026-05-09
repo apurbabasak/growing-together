@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import BottomNav from '../components/BottomNav';
@@ -52,6 +52,14 @@ export default function Dashboard() {
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [jpsSaving, setJpsSaving] = useState(false);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = 0.4;
+      audioRef.current.play().catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     const name = localStorage.getItem('userName') || 'Devotee';
@@ -146,6 +154,10 @@ export default function Dashboard() {
       fontFamily: 'Georgia, serif',
       paddingBottom: '100px'
     }}>
+
+      <audio ref={audioRef} loop preload="auto">
+        <source src="/flute.mp3" type="audio/mpeg" />
+      </audio>
 
       {/* Header */}
       <div style={{
@@ -391,59 +403,32 @@ export default function Dashboard() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>
-                📱 JPS App
-              </h3>
+              <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>📱 JPS App</h3>
               <p style={{ margin: 0, fontSize: '13px', color: '#6B6B6B' }}>
-                {jpsRead === true
-                  ? '✅ Read today — +5 bonus points!'
-                  : jpsRead === false
-                  ? '❌ Not read today'
-                  : 'Did you read JPS App today?'}
+                {jpsRead === true ? '✅ Read today — +5 bonus points!' : jpsRead === false ? '❌ Not read today' : 'Did you read JPS App today?'}
               </p>
             </div>
             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#22c55e' }}>
               {jpsRead === true ? '+5 pts' : '0 pts'}
             </span>
           </div>
-
           <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
-            <button
-              onClick={() => saveJpsApp(true)}
-              disabled={jpsSaving}
+            <button onClick={() => saveJpsApp(true)} disabled={jpsSaving}
               style={{
-                flex: 1, padding: '12px',
-                borderRadius: '999px',
-                background: jpsRead === true
-                  ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-                  : '#f0fdf4',
+                flex: 1, padding: '12px', borderRadius: '999px',
+                background: jpsRead === true ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#f0fdf4',
                 border: jpsRead === true ? 'none' : '2px solid #22c55e',
                 color: jpsRead === true ? 'white' : '#22c55e',
-                fontSize: '15px', cursor: 'pointer',
-                fontFamily: 'Georgia, serif', fontWeight: 'bold',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              ✅ Yes
-            </button>
-            <button
-              onClick={() => saveJpsApp(false)}
-              disabled={jpsSaving}
+                fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
+              }}>✅ Yes</button>
+            <button onClick={() => saveJpsApp(false)} disabled={jpsSaving}
               style={{
-                flex: 1, padding: '12px',
-                borderRadius: '999px',
-                background: jpsRead === false
-                  ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-                  : '#fff5f5',
+                flex: 1, padding: '12px', borderRadius: '999px',
+                background: jpsRead === false ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#fff5f5',
                 border: jpsRead === false ? 'none' : '2px solid #ef4444',
                 color: jpsRead === false ? 'white' : '#ef4444',
-                fontSize: '15px', cursor: 'pointer',
-                fontFamily: 'Georgia, serif', fontWeight: 'bold',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              ❌ No
-            </button>
+                fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
+              }}>❌ No</button>
           </div>
         </div>
 
