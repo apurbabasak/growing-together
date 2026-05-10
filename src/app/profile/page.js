@@ -1,208 +1,385 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import BottomNav from '../components/BottomNav';
+import { db } from '@/lib/firebase';
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  arrayRemove,
+  deleteField,
+} from 'firebase/firestore';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
-  const [sanghaCode, setSanghaCode] = useState('');
-  const [sanghaData, setSanghaData] = useState(null);
+  const [userId, setUserId] = useState('');
+  const [sangha, setSangha] = useState('');
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [leaving, setLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
-    const uid = localStorage.getItem('userId') || '';
-    const code = localStorage.getItem('sanghaCode') || '';
-    setUserId(uid);
-    setSanghaCode(code);
+    const id = localStorage.getItem('userId');
+    const name = localStorage.getItem('userName');
+    const sg = localStorage.getItem('sangha') || '';
 
-    if (code) {
-      const ref = doc(db, 'sanghas', code);
-      const unsub = onSnapshot(ref, snap => {
-        if (snap.exists()) {
-          const data = snap.data();
-          setSanghaData(data);
-          const me = data.members?.[uid];
-          if (me?.name) setUserName(me.name);
-        }
-        setLoading(false);
-      });
-      return () => unsub();
-    } else {
-      setLoading(false);
+    if (!id || !name) {
+      router.replace('/');
+      return;
     }
+
+    setUserId(id);
+    setUserName(name);
+    setSangha(sg);
+    fetchUserData(id);
   }, []);
 
-  const handleLeaveSangha = async () => {
-    if (!sanghaCode || !userId) return;
-    setLeaving(true);
+  const fetchUserData = async (id) => {
     try {
-      const ref = doc(db, 'sanghas', sanghaCode);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
-        const updatedMembers = { ...data.members };
-        delete updatedMembers[userId];
-        await setDoc(ref, { ...data, members: updatedMembers });
-      }
-      // Clear local storage
-      localStorage.removeItem('userId');
-      localStorage.removeItem('sanghaCode');
-      localStorage.removeItem('userName');
-      // Redirect to login/join page
-      router.push('/');
+      const userRef = doc(db, 'users', id);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) setUserData(snap.data());
     } catch (err) {
-      console.error('Error leaving sangha:', err);
-      setLeaving(false);
-      setShowLeaveConfirm(false);
+      console.error('Error fetching user data:', err);
     }
+    setLoading(false);
   };
 
-  const memberCount = sanghaData ? Object.keys(sanghaData.members || {}).length : 0;
-  const myData = sanghaData?.members?.[userId] || {};
-  const totalDays = Object.keys(myData.daily_entries || {}).length;
+  // ── LOGOUT — clears session but keeps account in Firebase ─────────────────
+  const handleLogout = () => {
+    // Only clear session keys — account stays in Firebase
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('sangha');
+    // Redirect to login page
+    router.replace('/');
+  };
 
-  // Calculate total score across all entries
-  function calcScore(entry) {
-    if (!entry) return 0;
-    let total = 0;
-    const rounds = entry.chanting?.rounds_completed || 0;
-    if (rounds >= 16) { total += 70 + (rounds - 16) * 0.5; }
-    else { total += (rounds / 16) * 70; }
-    const readMins = entry.reading?.minutes || 0;
-    if (readMins >= 10) { total += 10 + (readMins - 10) * 0.1; }
-    else { total += (readMins / 10) * 10; }
-    const hearMins = entry.hearing?.minutes || 0;
-    if (hearMins >= 10) { total += 10 + (hearMins - 10) * 0.1; }
-    else { total += (hearMins / 10) * 10; }
-    const activities = entry.devotional_service?.activities || [];
-    if (activities.length > 0) {
-      total += 10;
-      if (activities.includes('fasting')) total += 5;
-      if (activities.includes('seva_of_guru')) total += 5;
+  // ── LEAVE SANGHA ──────────────────────────────────────────────────────────
+  const handleLeaveSangha = async () => {
+    if (!sangha) return;
+    setLeaving(true);
+    try {
+      // Remove user from sangha members list
+      const sanghaRef = doc(db, 'sanghas', sangha);
+      await updateDoc(sanghaRef, {
+        members: arrayRemove(userId),
+      });
+
+      // Remove sangha from user record
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { sangha: null });
+
+      localStorage.removeItem('sangha');
+      setSangha('');
+      setShowLeaveConfirm(false);
+      alert('You have left the sangha. Your account is still active.');
+    } catch (err) {
+      console.error('Error leaving sangha:', err);
+      alert('Something went wrong. Please try again.');
     }
-    if (entry.jps_app?.read === true) total += 5;
-    if (entry.chanting_time?.bonus === true) total += 3;
-    return Math.round(total * 10) / 10;
+    setLeaving(false);
+  };
+
+  if (loading) {
+    return (
+      <div style={styles.centered}>
+        <div style={styles.spinner} />
+      </div>
+    );
   }
 
-  const allEntries = Object.values(myData.daily_entries || {});
-  const avgScore = allEntries.length > 0
-    ? (allEntries.reduce((s, e) => s + calcScore(e), 0) / allEntries.length).toFixed(1)
-    : '0.0';
-
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #FFF8F0, #FFF0E0)', fontFamily: 'Georgia, serif', paddingBottom: '120px' }}>
-
+    <div style={styles.page}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #FF9933, #FFD700)', padding: '24px 20px 30px', borderRadius: '0 0 24px 24px', marginBottom: '20px', textAlign: 'center' }}>
-        <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '32px', fontWeight: 'bold', color: 'white' }}>
-          {userName ? userName.charAt(0).toUpperCase() : '🙏'}
+      <div style={styles.header}>
+        <div style={styles.avatar}>
+          {userName.charAt(0).toUpperCase()}
         </div>
-        <h1 style={{ color: 'white', fontSize: '22px', margin: '0 0 4px', fontWeight: 'bold' }}>{userName || 'Devotee'}</h1>
-        <p style={{ color: 'white', fontSize: '13px', margin: 0, opacity: 0.9 }}>Sadhana Profile</p>
+        <div>
+          <div style={styles.name}>{userName}</div>
+          <div style={styles.sub}>
+            {sangha ? `Sangha: ${sangha}` : 'No sangha joined'}
+          </div>
+          {userData?.createdAt && (
+            <div style={styles.sub}>
+              Member since{' '}
+              {new Date(userData.createdAt).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div style={{ padding: '0 20px' }}>
+      {/* Info card */}
+      <div style={styles.infoCard}>
+        <div style={styles.infoRow}>
+          <span style={styles.infoLabel}>Account ID</span>
+          <span style={styles.infoValue}>{userId}</span>
+        </div>
+        <div style={styles.infoRow}>
+          <span style={styles.infoLabel}>Login Method</span>
+          <span style={styles.infoValue}>Name + 4-digit PIN</span>
+        </div>
+        <div style={styles.infoRow}>
+          <span style={styles.infoLabel}>Sangha</span>
+          <span style={styles.infoValue}>{sangha || '—'}</span>
+        </div>
+      </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div style={{ fontSize: '36px', marginBottom: '10px' }}>🔄</div>
-            <p style={{ color: '#FF9933' }}>Loading...</p>
-          </div>
+      {/* Logout section */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Account</div>
+        <p style={styles.sectionDesc}>
+          Logging out will end your session on this device. Your account, progress,
+          and PIN are saved — you can log back in any time with your name and PIN.
+        </p>
+
+        {!showLogoutConfirm ? (
+          <button
+            style={styles.logoutBtn}
+            onClick={() => setShowLogoutConfirm(true)}
+          >
+            🔓 Log Out
+          </button>
         ) : (
-          <>
-            {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-              {[
-                { label: 'Days Logged', value: totalDays, icon: '📅' },
-                { label: 'Avg Score', value: `${avgScore}`, icon: '🏆' },
-                { label: 'Sangha Size', value: memberCount, icon: '🌸' },
-              ].map(s => (
-                <div key={s.label} style={{ background: 'white', borderRadius: '16px', padding: '14px 10px', textAlign: 'center', boxShadow: '0 2px 12px rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.15)' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: '22px' }}>{s.icon}</p>
-                  <p style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: 'bold', color: '#FF9933' }}>{s.value}</p>
-                  <p style={{ margin: 0, fontSize: '10px', color: '#6B6B6B' }}>{s.label}</p>
-                </div>
-              ))}
+          <div style={styles.confirmBox}>
+            <p style={styles.confirmText}>
+              Are you sure you want to log out? You can log back in with your name
+              and PIN.
+            </p>
+            <div style={styles.confirmRow}>
+              <button
+                style={styles.cancelBtn}
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button style={styles.confirmLogoutBtn} onClick={handleLogout}>
+                Yes, Log Out
+              </button>
             </div>
-
-            {/* Sangha Info */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '18px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.15)' }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#2D2D2D' }}>🌸 My Sangha</h3>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', color: '#6B6B6B' }}>Sangha Code</span>
-                <span style={{ fontSize: '13px', color: '#FF9933', fontWeight: 'bold', letterSpacing: '2px' }}>{sanghaCode || '—'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', color: '#6B6B6B' }}>Members</span>
-                <span style={{ fontSize: '13px', color: '#2D2D2D', fontWeight: 'bold' }}>{memberCount} devotees</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '13px', color: '#6B6B6B' }}>My Name</span>
-                <span style={{ fontSize: '13px', color: '#2D2D2D', fontWeight: 'bold' }}>{userName || '—'}</span>
-              </div>
-            </div>
-
-            {/* Members list */}
-            {sanghaData && Object.keys(sanghaData.members || {}).length > 0 && (
-              <div style={{ background: 'white', borderRadius: '20px', padding: '18px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.15)' }}>
-                <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#2D2D2D' }}>👥 All Members</h3>
-                {Object.entries(sanghaData.members).map(([uid, m]) => (
-                  <div key={uid} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid rgba(255,153,51,0.1)' }}>
-                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: uid === userId ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#FFF0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: uid === userId ? 'white' : '#FF9933' }}>
-                      {m.name?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: '14px', color: '#2D2D2D' }}>{m.name}{uid === userId ? ' (You)' : ''}</p>
-                      <p style={{ margin: 0, fontSize: '11px', color: '#6B6B6B' }}>{Object.keys(m.daily_entries || {}).length} days logged</p>
-                    </div>
-                    {uid === userId && (
-                      <span style={{ fontSize: '11px', background: '#FFF0E0', color: '#FF9933', padding: '2px 8px', borderRadius: '999px', fontWeight: 'bold' }}>You</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Danger Zone - Leave Sangha */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '18px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.2)' }}>
-              <h3 style={{ margin: '0 0 6px', fontSize: '15px', color: '#ef4444' }}>⚠️ Leave Sangha</h3>
-              <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#6B6B6B', lineHeight: 1.5 }}>
-                Removing yourself from this sangha will permanently delete your name and all your sadhana data from the group. This cannot be undone. Everyone's dashboard will be updated immediately.
-              </p>
-              {!showLeaveConfirm ? (
-                <button onClick={() => setShowLeaveConfirm(true)}
-                  style={{ width: '100%', padding: '13px', borderRadius: '999px', background: 'white', border: '2px solid #ef4444', color: '#ef4444', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                  🚪 Leave This Sangha
-                </button>
-              ) : (
-                <div style={{ background: '#fff5f5', borderRadius: '16px', padding: '16px' }}>
-                  <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#ef4444', fontWeight: 'bold', textAlign: 'center' }}>
-                    Are you sure? All your data will be removed permanently.
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => setShowLeaveConfirm(false)}
-                      style={{ flex: 1, padding: '12px', borderRadius: '999px', background: 'white', border: '2px solid #FF9933', color: '#FF9933', fontSize: '14px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                      Cancel
-                    </button>
-                    <button onClick={handleLeaveSangha} disabled={leaving}
-                      style={{ flex: 1, padding: '12px', borderRadius: '999px', background: leaving ? '#fca5a5' : '#ef4444', border: 'none', color: 'white', fontSize: '14px', cursor: leaving ? 'not-allowed' : 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                      {leaving ? '⏳ Removing...' : '✅ Yes, Leave'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
+          </div>
         )}
       </div>
-      <BottomNav />
+
+      {/* Leave Sangha section */}
+      {sangha && (
+        <div style={{ ...styles.section, borderColor: '#ffe0cc' }}>
+          <div style={{ ...styles.sectionTitle, color: '#e67e22' }}>
+            Leave Sangha
+          </div>
+          <p style={styles.sectionDesc}>
+            Leaving the sangha will remove your name from <strong>{sangha}</strong>.
+            Your account and progress are NOT deleted — you can rejoin or join
+            another sangha anytime.
+          </p>
+
+          {!showLeaveConfirm ? (
+            <button
+              style={styles.leaveBtn}
+              onClick={() => setShowLeaveConfirm(true)}
+            >
+              ⚠️ Leave Sangha
+            </button>
+          ) : (
+            <div style={{ ...styles.confirmBox, borderColor: '#ffe0cc' }}>
+              <p style={styles.confirmText}>
+                Are you sure you want to leave <strong>{sangha}</strong>? Everyone
+                in the group will see the updated list.
+              </p>
+              <div style={styles.confirmRow}>
+                <button
+                  style={styles.cancelBtn}
+                  onClick={() => setShowLeaveConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={styles.confirmLeaveBtn}
+                  onClick={handleLeaveSangha}
+                  disabled={leaving}
+                >
+                  {leaving ? 'Leaving…' : 'Yes, Leave'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PIN reminder */}
+      <div style={styles.pinReminder}>
+        <div style={styles.pinReminderIcon}>🔐</div>
+        <div>
+          <div style={styles.pinReminderTitle}>Remember your PIN</div>
+          <div style={styles.pinReminderText}>
+            Your 4-digit PIN is required to log back in. Please remember it or
+            note it down safely. If forgotten, contact your group admin.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+const styles = {
+  page: {
+    padding: '20px 16px',
+    maxWidth: 500,
+    margin: '0 auto',
+    fontFamily: "'Georgia', serif",
+    minHeight: '100vh',
+    background: '#fdf9f4',
+  },
+  centered: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinner: {
+    width: 36,
+    height: 36,
+    border: '3px solid #f0e8e0',
+    borderTop: '3px solid #ff6b35',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    background: '#fff',
+    borderRadius: 16,
+    padding: '20px',
+    marginBottom: 16,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #ff6b35, #ff8c42)',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 26,
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  name: { fontWeight: 700, fontSize: 20, color: '#222' },
+  sub: { fontSize: 13, color: '#888', marginTop: 2 },
+
+  infoCard: {
+    background: '#fff',
+    borderRadius: 14,
+    padding: '16px 20px',
+    marginBottom: 16,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    borderBottom: '1px solid #f5f0eb',
+  },
+  infoLabel: { fontSize: 13, color: '#888' },
+  infoValue: { fontSize: 13, color: '#333', fontWeight: 600, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-all' },
+
+  section: {
+    background: '#fff',
+    border: '1.5px solid #e8e0d8',
+    borderRadius: 14,
+    padding: '18px 20px',
+    marginBottom: 16,
+  },
+  sectionTitle: { fontWeight: 700, fontSize: 16, color: '#333', marginBottom: 6 },
+  sectionDesc: { fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 14 },
+
+  logoutBtn: {
+    width: '100%',
+    padding: '13px',
+    background: '#f5f0eb',
+    border: '1.5px solid #ddd',
+    borderRadius: 10,
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: 'pointer',
+    color: '#333',
+  },
+  leaveBtn: {
+    width: '100%',
+    padding: '13px',
+    background: '#fff5f0',
+    border: '1.5px solid #ffccc0',
+    borderRadius: 10,
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: 'pointer',
+    color: '#e67e22',
+  },
+
+  confirmBox: {
+    background: '#fdf9f4',
+    border: '1.5px solid #e8e0d8',
+    borderRadius: 10,
+    padding: '14px',
+  },
+  confirmText: { fontSize: 13, color: '#555', marginBottom: 12, lineHeight: 1.5 },
+  confirmRow: { display: 'flex', gap: 10 },
+  cancelBtn: {
+    flex: 1,
+    padding: '10px',
+    background: '#f5f0eb',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 14,
+    color: '#555',
+  },
+  confirmLogoutBtn: {
+    flex: 1,
+    padding: '10px',
+    background: '#555',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 600,
+  },
+  confirmLeaveBtn: {
+    flex: 1,
+    padding: '10px',
+    background: '#e67e22',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 600,
+  },
+
+  pinReminder: {
+    display: 'flex',
+    gap: 12,
+    alignItems: 'flex-start',
+    background: '#fffbf0',
+    border: '1.5px solid #fde8a0',
+    borderRadius: 12,
+    padding: '14px 16px',
+    marginTop: 8,
+  },
+  pinReminderIcon: { fontSize: 22, flexShrink: 0 },
+  pinReminderTitle: { fontWeight: 700, fontSize: 14, color: '#8a6200', marginBottom: 4 },
+  pinReminderText: { fontSize: 12, color: '#a07800', lineHeight: 1.5 },
+};
