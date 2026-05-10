@@ -1,14 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  arrayRemove,
-  deleteField,
-} from 'firebase/firestore';
+import { db } from '@/app/firebase';
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -25,12 +19,7 @@ export default function ProfilePage() {
     const id = localStorage.getItem('userId');
     const name = localStorage.getItem('userName');
     const sg = localStorage.getItem('sangha') || '';
-
-    if (!id || !name) {
-      router.replace('/');
-      return;
-    }
-
+    if (!id || !name) { router.replace('/'); return; }
     setUserId(id);
     setUserName(name);
     setSangha(sg);
@@ -48,31 +37,21 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
-  // ── LOGOUT — clears session but keeps account in Firebase ─────────────────
   const handleLogout = () => {
-    // Only clear session keys — account stays in Firebase
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('sangha');
-    // Redirect to login page
     router.replace('/');
   };
 
-  // ── LEAVE SANGHA ──────────────────────────────────────────────────────────
   const handleLeaveSangha = async () => {
     if (!sangha) return;
     setLeaving(true);
     try {
-      // Remove user from sangha members list
       const sanghaRef = doc(db, 'sanghas', sangha);
-      await updateDoc(sanghaRef, {
-        members: arrayRemove(userId),
-      });
-
-      // Remove sangha from user record
+      await updateDoc(sanghaRef, { members: arrayRemove(userId) });
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, { sangha: null });
-
       localStorage.removeItem('sangha');
       setSangha('');
       setShowLeaveConfirm(false);
@@ -96,22 +75,13 @@ export default function ProfilePage() {
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <div style={styles.avatar}>
-          {userName.charAt(0).toUpperCase()}
-        </div>
+        <div style={styles.avatar}>{userName.charAt(0).toUpperCase()}</div>
         <div>
           <div style={styles.name}>{userName}</div>
-          <div style={styles.sub}>
-            {sangha ? `Sangha: ${sangha}` : 'No sangha joined'}
-          </div>
+          <div style={styles.sub}>{sangha ? `Sangha: ${sangha}` : 'No sangha joined'}</div>
           {userData?.createdAt && (
             <div style={styles.sub}>
-              Member since{' '}
-              {new Date(userData.createdAt).toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
+              Member since {new Date(userData.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
           )}
         </div>
@@ -137,33 +107,16 @@ export default function ProfilePage() {
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Account</div>
         <p style={styles.sectionDesc}>
-          Logging out will end your session on this device. Your account, progress,
-          and PIN are saved — you can log back in any time with your name and PIN.
+          Logging out will end your session on this device. Your account, progress, and PIN are saved — you can log back in any time with your name and PIN.
         </p>
-
         {!showLogoutConfirm ? (
-          <button
-            style={styles.logoutBtn}
-            onClick={() => setShowLogoutConfirm(true)}
-          >
-            🔓 Log Out
-          </button>
+          <button style={styles.logoutBtn} onClick={() => setShowLogoutConfirm(true)}>🔓 Log Out</button>
         ) : (
           <div style={styles.confirmBox}>
-            <p style={styles.confirmText}>
-              Are you sure you want to log out? You can log back in with your name
-              and PIN.
-            </p>
+            <p style={styles.confirmText}>Are you sure you want to log out? You can log back in with your name and PIN.</p>
             <div style={styles.confirmRow}>
-              <button
-                style={styles.cancelBtn}
-                onClick={() => setShowLogoutConfirm(false)}
-              >
-                Cancel
-              </button>
-              <button style={styles.confirmLogoutBtn} onClick={handleLogout}>
-                Yes, Log Out
-              </button>
+              <button style={styles.cancelBtn} onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
+              <button style={styles.confirmLogoutBtn} onClick={handleLogout}>Yes, Log Out</button>
             </div>
           </div>
         )}
@@ -172,40 +125,18 @@ export default function ProfilePage() {
       {/* Leave Sangha section */}
       {sangha && (
         <div style={{ ...styles.section, borderColor: '#ffe0cc' }}>
-          <div style={{ ...styles.sectionTitle, color: '#e67e22' }}>
-            Leave Sangha
-          </div>
+          <div style={{ ...styles.sectionTitle, color: '#e67e22' }}>Leave Sangha</div>
           <p style={styles.sectionDesc}>
-            Leaving the sangha will remove your name from <strong>{sangha}</strong>.
-            Your account and progress are NOT deleted — you can rejoin or join
-            another sangha anytime.
+            Leaving the sangha will remove your name from <strong>{sangha}</strong>. Your account and progress are NOT deleted.
           </p>
-
           {!showLeaveConfirm ? (
-            <button
-              style={styles.leaveBtn}
-              onClick={() => setShowLeaveConfirm(true)}
-            >
-              ⚠️ Leave Sangha
-            </button>
+            <button style={styles.leaveBtn} onClick={() => setShowLeaveConfirm(true)}>⚠️ Leave Sangha</button>
           ) : (
             <div style={{ ...styles.confirmBox, borderColor: '#ffe0cc' }}>
-              <p style={styles.confirmText}>
-                Are you sure you want to leave <strong>{sangha}</strong>? Everyone
-                in the group will see the updated list.
-              </p>
+              <p style={styles.confirmText}>Are you sure you want to leave <strong>{sangha}</strong>?</p>
               <div style={styles.confirmRow}>
-                <button
-                  style={styles.cancelBtn}
-                  onClick={() => setShowLeaveConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  style={styles.confirmLeaveBtn}
-                  onClick={handleLeaveSangha}
-                  disabled={leaving}
-                >
+                <button style={styles.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
+                <button style={styles.confirmLeaveBtn} onClick={handleLeaveSangha} disabled={leaving}>
                   {leaving ? 'Leaving…' : 'Yes, Leave'}
                 </button>
               </div>
@@ -220,8 +151,7 @@ export default function ProfilePage() {
         <div>
           <div style={styles.pinReminderTitle}>Remember your PIN</div>
           <div style={styles.pinReminderText}>
-            Your 4-digit PIN is required to log back in. Please remember it or
-            note it down safely. If forgotten, contact your group admin.
+            Your 4-digit PIN is required to log back in. Please remember it or note it down safely. If forgotten, contact your group admin.
           </div>
         </div>
       </div>
@@ -230,155 +160,29 @@ export default function ProfilePage() {
 }
 
 const styles = {
-  page: {
-    padding: '20px 16px',
-    maxWidth: 500,
-    margin: '0 auto',
-    fontFamily: "'Georgia', serif",
-    minHeight: '100vh',
-    background: '#fdf9f4',
-  },
-  centered: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spinner: {
-    width: 36,
-    height: 36,
-    border: '3px solid #f0e8e0',
-    borderTop: '3px solid #ff6b35',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-  },
-
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 16,
-    background: '#fff',
-    borderRadius: 16,
-    padding: '20px',
-    marginBottom: 16,
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #ff6b35, #ff8c42)',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 26,
-    fontWeight: 700,
-    flexShrink: 0,
-  },
+  page: { padding: '20px 16px', maxWidth: 500, margin: '0 auto', fontFamily: "'Georgia', serif", minHeight: '100vh', background: '#fdf9f4' },
+  centered: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  spinner: { width: 36, height: 36, border: '3px solid #f0e8e0', borderTop: '3px solid #ff6b35', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+  header: { display: 'flex', alignItems: 'center', gap: 16, background: '#fff', borderRadius: 16, padding: '20px', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
+  avatar: { width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, #ff6b35, #ff8c42)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 700, flexShrink: 0 },
   name: { fontWeight: 700, fontSize: 20, color: '#222' },
   sub: { fontSize: 13, color: '#888', marginTop: 2 },
-
-  infoCard: {
-    background: '#fff',
-    borderRadius: 14,
-    padding: '16px 20px',
-    marginBottom: 16,
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-  },
-  infoRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '8px 0',
-    borderBottom: '1px solid #f5f0eb',
-  },
+  infoCard: { background: '#fff', borderRadius: 14, padding: '16px 20px', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
+  infoRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f5f0eb' },
   infoLabel: { fontSize: 13, color: '#888' },
   infoValue: { fontSize: 13, color: '#333', fontWeight: 600, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-all' },
-
-  section: {
-    background: '#fff',
-    border: '1.5px solid #e8e0d8',
-    borderRadius: 14,
-    padding: '18px 20px',
-    marginBottom: 16,
-  },
+  section: { background: '#fff', border: '1.5px solid #e8e0d8', borderRadius: 14, padding: '18px 20px', marginBottom: 16 },
   sectionTitle: { fontWeight: 700, fontSize: 16, color: '#333', marginBottom: 6 },
   sectionDesc: { fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 14 },
-
-  logoutBtn: {
-    width: '100%',
-    padding: '13px',
-    background: '#f5f0eb',
-    border: '1.5px solid #ddd',
-    borderRadius: 10,
-    fontSize: 15,
-    fontWeight: 600,
-    cursor: 'pointer',
-    color: '#333',
-  },
-  leaveBtn: {
-    width: '100%',
-    padding: '13px',
-    background: '#fff5f0',
-    border: '1.5px solid #ffccc0',
-    borderRadius: 10,
-    fontSize: 15,
-    fontWeight: 600,
-    cursor: 'pointer',
-    color: '#e67e22',
-  },
-
-  confirmBox: {
-    background: '#fdf9f4',
-    border: '1.5px solid #e8e0d8',
-    borderRadius: 10,
-    padding: '14px',
-  },
+  logoutBtn: { width: '100%', padding: '13px', background: '#f5f0eb', border: '1.5px solid #ddd', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', color: '#333' },
+  leaveBtn: { width: '100%', padding: '13px', background: '#fff5f0', border: '1.5px solid #ffccc0', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', color: '#e67e22' },
+  confirmBox: { background: '#fdf9f4', border: '1.5px solid #e8e0d8', borderRadius: 10, padding: '14px' },
   confirmText: { fontSize: 13, color: '#555', marginBottom: 12, lineHeight: 1.5 },
   confirmRow: { display: 'flex', gap: 10 },
-  cancelBtn: {
-    flex: 1,
-    padding: '10px',
-    background: '#f5f0eb',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: 14,
-    color: '#555',
-  },
-  confirmLogoutBtn: {
-    flex: 1,
-    padding: '10px',
-    background: '#555',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  confirmLeaveBtn: {
-    flex: 1,
-    padding: '10px',
-    background: '#e67e22',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 600,
-  },
-
-  pinReminder: {
-    display: 'flex',
-    gap: 12,
-    alignItems: 'flex-start',
-    background: '#fffbf0',
-    border: '1.5px solid #fde8a0',
-    borderRadius: 12,
-    padding: '14px 16px',
-    marginTop: 8,
-  },
+  cancelBtn: { flex: 1, padding: '10px', background: '#f5f0eb', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: '#555' },
+  confirmLogoutBtn: { flex: 1, padding: '10px', background: '#555', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600 },
+  confirmLeaveBtn: { flex: 1, padding: '10px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600 },
+  pinReminder: { display: 'flex', gap: 12, alignItems: 'flex-start', background: '#fffbf0', border: '1.5px solid #fde8a0', borderRadius: 12, padding: '14px 16px', marginTop: 8 },
   pinReminderIcon: { fontSize: 22, flexShrink: 0 },
   pinReminderTitle: { fontWeight: 700, fontSize: 14, color: '#8a6200', marginBottom: 4 },
   pinReminderText: { fontSize: 12, color: '#a07800', lineHeight: 1.5 },
