@@ -9,6 +9,7 @@ export default function BottomNav() {
     { label: 'Home', icon: '🏠', route: '/dashboard' },
     { label: 'Books', icon: '📚', route: '/books' },
     { label: 'Reading', icon: '📖', route: '/reading-together' },
+    { label: 'Progress', icon: '📊', route: '/progress' },
     { label: 'Profile', icon: '👤', route: '/profile' },
   ];
 
@@ -18,7 +19,7 @@ export default function BottomNav() {
       background: 'white',
       borderTop: '1px solid rgba(255,153,51,0.2)',
       display: 'flex', justifyContent: 'space-around',
-      padding: '10px 0 16px',
+      padding: '8px 0 14px',
       boxShadow: '0 -4px 20px rgba(255,153,51,0.1)',
       zIndex: 50
     }}>
@@ -27,12 +28,12 @@ export default function BottomNav() {
         return (
           <button key={tab.route} onClick={() => router.push(tab.route)}
             style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
               background: 'none', border: 'none', cursor: 'pointer',
-              padding: '4px 12px'
+              padding: '4px 8px'
             }}>
-            <span style={{ fontSize: '22px', filter: active ? 'none' : 'grayscale(60%)', transition: 'filter 0.2s' }}>{tab.icon}</span>
-            <span style={{ fontSize: '11px', color: active ? '#FF9933' : '#6B6B6B', fontFamily: 'Georgia, serif', fontWeight: active ? 'bold' : 'normal' }}>{tab.label}</span>
+            <span style={{ fontSize: '20px', filter: active ? 'none' : 'grayscale(60%)', transition: 'filter 0.2s' }}>{tab.icon}</span>
+            <span style={{ fontSize: '10px', color: active ? '#FF9933' : '#6B6B6B', fontFamily: 'Georgia, serif', fontWeight: active ? 'bold' : 'normal' }}>{tab.label}</span>
           </button>
         );
       })}
