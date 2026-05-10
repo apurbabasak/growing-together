@@ -147,6 +147,27 @@ export default function Dashboard() {
   const rankEmojis = ['🥇', '🥈', '🥉'];
   const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
+  // Modal overlay style - FIXED to be fully scrollable
+  const modalOverlay = {
+    position: 'fixed', inset: 0,
+    background: 'rgba(0,0,0,0.6)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '20px',
+  };
+
+  const modalBox = {
+    background: 'white',
+    borderRadius: '24px',
+    padding: '28px 24px',
+    width: '100%',
+    maxWidth: '480px',
+    maxHeight: '85vh',
+    overflowY: 'auto',
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -167,9 +188,7 @@ export default function Dashboard() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <p style={{ color: 'white', fontSize: '12px', margin: '0 0 2px', opacity: 0.9 }}>
-              🕉️ Sadhana Sangha
-            </p>
+            <p style={{ color: 'white', fontSize: '12px', margin: '0 0 2px', opacity: 0.9 }}>🕉️ Sadhana Sangha</p>
             <h1 style={{ color: 'white', fontSize: '20px', margin: 0, fontWeight: 'bold' }}>
               Hare Krishna, {userName}!
             </h1>
@@ -185,19 +204,12 @@ export default function Dashboard() {
           background: 'rgba(255,255,255,0.2)', borderRadius: '16px',
           padding: '14px 18px', marginTop: '16px'
         }}>
-          <p style={{ color: 'white', fontSize: '12px', margin: '0 0 4px', opacity: 0.9 }}>
-            Today's Sadhana Score
-          </p>
+          <p style={{ color: 'white', fontSize: '12px', margin: '0 0 4px', opacity: 0.9 }}>Today's Sadhana Score</p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ color: 'white', fontSize: '42px', fontWeight: 'bold', lineHeight: 1 }}>
-              {myScore}
-            </span>
+            <span style={{ color: 'white', fontSize: '42px', fontWeight: 'bold', lineHeight: 1 }}>{myScore}</span>
             <span style={{ color: 'white', fontSize: '16px', opacity: 0.8 }}>/ 105</span>
           </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.3)', borderRadius: '999px',
-            height: '6px', marginTop: '10px'
-          }}>
+          <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: '999px', height: '6px', marginTop: '10px' }}>
             <div style={{
               background: 'white', borderRadius: '999px', height: '100%',
               width: `${Math.min((myScore / 105) * 100, 100)}%`,
@@ -213,13 +225,10 @@ export default function Dashboard() {
       <div style={{ padding: '20px' }}>
 
         {/* Leaderboard */}
-        <h2 style={{ color: '#2D2D2D', fontSize: '16px', margin: '0 0 12px' }}>
-          🏆 Sangha Leaderboard
-        </h2>
+        <h2 style={{ color: '#2D2D2D', fontSize: '16px', margin: '0 0 12px' }}>🏆 Sangha Leaderboard</h2>
         <div style={{
           background: 'white', borderRadius: '20px', padding: '16px',
-          marginBottom: '24px',
-          boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
+          marginBottom: '24px', boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
           border: '1px solid rgba(255,153,51,0.15)'
         }}>
           {sortedMembers.length === 0 && (
@@ -249,9 +258,7 @@ export default function Dashboard() {
                   {member.name} {member.uid === userId ? '(You)' : ''}
                 </p>
                 {member.jpsRead && (
-                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#22c55e' }}>
-                    📱 JPS App ✓
-                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#22c55e' }}>📱 JPS App ✓</p>
                 )}
               </div>
               <span style={{ fontSize: '18px', fontWeight: 'bold', color: index === 0 ? '#FF9933' : '#2D2D2D' }}>
@@ -262,9 +269,7 @@ export default function Dashboard() {
         </div>
 
         {/* Sadhana Cards */}
-        <h2 style={{ color: '#2D2D2D', fontSize: '16px', margin: '0 0 12px' }}>
-          📿 Today's Sadhana
-        </h2>
+        <h2 style={{ color: '#2D2D2D', fontSize: '16px', margin: '0 0 12px' }}>📿 Today's Sadhana</h2>
 
         {/* Chanting */}
         <div style={{
@@ -387,18 +392,11 @@ export default function Dashboard() {
 
         {/* JPS App Card */}
         <div style={{
-          background: jpsRead === true
-            ? 'linear-gradient(135deg, #f0fff4, #dcfce7)'
-            : jpsRead === false
-            ? 'linear-gradient(135deg, #fff5f5, #fee2e2)'
-            : 'white',
-          borderRadius: '20px', padding: '18px',
-          marginBottom: '12px', boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
-          border: jpsRead === true
-            ? '1px solid #86efac'
-            : jpsRead === false
-            ? '1px solid #fca5a5'
-            : '1px solid rgba(255,153,51,0.15)',
+          background: jpsRead === true ? 'linear-gradient(135deg, #f0fff4, #dcfce7)'
+            : jpsRead === false ? 'linear-gradient(135deg, #fff5f5, #fee2e2)' : 'white',
+          borderRadius: '20px', padding: '18px', marginBottom: '12px',
+          boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
+          border: jpsRead === true ? '1px solid #86efac' : jpsRead === false ? '1px solid #fca5a5' : '1px solid rgba(255,153,51,0.15)',
           transition: 'all 0.3s ease'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -438,88 +436,181 @@ export default function Dashboard() {
           marginTop: '12px', border: '1px dashed #FFD700', textAlign: 'center'
         }}>
           <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#6B6B6B' }}>Your Sangha Code</p>
-          <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#FF9933', letterSpacing: '2px' }}>
-            {sanghaCode}
-          </p>
-          <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6B6B6B' }}>
-            Share this with devotees to join your group
-          </p>
+          <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#FF9933', letterSpacing: '2px' }}>{sanghaCode}</p>
+          <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6B6B6B' }}>Share this with devotees to join your group</p>
         </div>
       </div>
 
-      {/* Chanting Modal */}
+      {/* ── CHANTING MODAL ── */}
       {activeModal === 'chanting' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px', width: '100%', maxWidth: '480px' }}>
-            <h3 style={{ margin: '0 0 20px', color: '#2D2D2D', fontSize: '18px' }}>🕉️ Log Chanting</h3>
-            <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#6B6B6B' }}>Rounds completed today</p>
-            <input type="number" min="0" value={formData.rounds}
+        <div style={modalOverlay} onClick={() => setActiveModal(null)}>
+          <div style={modalBox} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', color: '#2D2D2D', fontSize: '18px' }}>🕉️ Log Chanting</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#6B6B6B' }}>How many rounds did you chant today?</p>
+
+            {/* Quick select buttons */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              {[4, 8, 12, 16, 20, 25, 32].map(n => (
+                <button key={n} onClick={() => setFormData({ ...formData, rounds: n })}
+                  style={{
+                    padding: '8px 16px', borderRadius: '999px', border: 'none',
+                    background: formData.rounds === n ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#FFF0E0',
+                    color: formData.rounds === n ? 'white' : '#FF9933',
+                    fontSize: '14px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
+                  }}>{n}</button>
+              ))}
+            </div>
+
+            <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#6B6B6B' }}>Or type a number:</p>
+            <input type="number" min="0" max="64"
+              value={formData.rounds}
               onChange={(e) => setFormData({ ...formData, rounds: parseInt(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #FFD700', fontSize: '18px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5', boxSizing: 'border-box', marginBottom: '8px' }} />
-            <p style={{ margin: '0 0 20px', fontSize: '12px', color: '#6B6B6B' }}>Target: 16 rounds = 70 points. Extra rounds give bonus!</p>
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: '1.5px solid #FFD700', fontSize: '22px',
+                fontFamily: 'Georgia, serif', outline: 'none',
+                color: '#2D2D2D', background: '#FFFAF5',
+                boxSizing: 'border-box', marginBottom: '8px',
+                textAlign: 'center'
+              }} />
+            <p style={{ margin: '0 0 20px', fontSize: '12px', color: '#6B6B6B', textAlign: 'center' }}>
+              Target: 16 rounds = 70 points. Extra rounds give bonus!
+            </p>
+
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setActiveModal(null)} style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Cancel</button>
-              <button onClick={() => saveEntry('chanting', { rounds_completed: formData.rounds, target_rounds: 16 })} disabled={saving}
-                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                {saving ? 'Saving...' : 'Save 🙏'}
+              <button onClick={() => setActiveModal(null)}
+                style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
+                Cancel
+              </button>
+              <button onClick={() => saveEntry('chanting', { rounds_completed: formData.rounds, target_rounds: 16 })}
+                disabled={saving}
+                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: saving ? '#ccc' : 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                {saving ? 'Saving...' : '✅ Save'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Reading Modal */}
+      {/* ── READING MODAL ── */}
       {activeModal === 'reading' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px', width: '100%', maxWidth: '480px' }}>
-            <h3 style={{ margin: '0 0 20px', color: '#2D2D2D', fontSize: '18px' }}>📖 Log Reading</h3>
-            <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#6B6B6B' }}>What did you read?</p>
-            <input type="text" placeholder="e.g. Bhagavad Gita Chapter 2" value={formData.topic}
+        <div style={modalOverlay} onClick={() => setActiveModal(null)}>
+          <div style={modalBox} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', color: '#2D2D2D', fontSize: '18px' }}>📖 Log Reading</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#6B6B6B' }}>What did you read today?</p>
+
+            <input type="text" placeholder="e.g. Bhagavad Gita Chapter 2"
+              value={formData.topic}
               onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-              style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #FFD700', fontSize: '15px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5', boxSizing: 'border-box', marginBottom: '12px' }} />
-            <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#6B6B6B' }}>Minutes read</p>
-            <input type="number" min="0" value={formData.minutes}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: '1.5px solid #FFD700', fontSize: '15px',
+                fontFamily: 'Georgia, serif', outline: 'none',
+                color: '#2D2D2D', background: '#FFFAF5',
+                boxSizing: 'border-box', marginBottom: '16px'
+              }} />
+
+            <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#6B6B6B' }}>Minutes read today:</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              {[10, 15, 20, 30, 45, 60].map(n => (
+                <button key={n} onClick={() => setFormData({ ...formData, minutes: n })}
+                  style={{
+                    padding: '8px 16px', borderRadius: '999px', border: 'none',
+                    background: formData.minutes === n ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#FFF0E0',
+                    color: formData.minutes === n ? 'white' : '#FF9933',
+                    fontSize: '14px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
+                  }}>{n} min</button>
+              ))}
+            </div>
+            <input type="number" min="0"
+              value={formData.minutes}
               onChange={(e) => setFormData({ ...formData, minutes: parseInt(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #FFD700', fontSize: '18px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5', boxSizing: 'border-box', marginBottom: '20px' }} />
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: '1.5px solid #FFD700', fontSize: '22px',
+                fontFamily: 'Georgia, serif', outline: 'none',
+                color: '#2D2D2D', background: '#FFFAF5',
+                boxSizing: 'border-box', marginBottom: '20px',
+                textAlign: 'center'
+              }} />
+
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setActiveModal(null)} style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Cancel</button>
-              <button onClick={() => saveEntry('reading', { topic: formData.topic, minutes: formData.minutes })} disabled={saving}
-                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                {saving ? 'Saving...' : 'Save 🙏'}
+              <button onClick={() => setActiveModal(null)}
+                style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
+                Cancel
+              </button>
+              <button onClick={() => saveEntry('reading', { topic: formData.topic, minutes: formData.minutes })}
+                disabled={saving}
+                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: saving ? '#ccc' : 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                {saving ? 'Saving...' : '✅ Save'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Hearing Modal */}
+      {/* ── HEARING MODAL ── */}
       {activeModal === 'hearing' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px', width: '100%', maxWidth: '480px' }}>
-            <h3 style={{ margin: '0 0 20px', color: '#2D2D2D', fontSize: '18px' }}>🎧 Log Hearing</h3>
-            <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#6B6B6B' }}>What did you hear?</p>
-            <textarea placeholder="e.g. Srila Prabhupada lecture on BG 2.13" value={formData.description}
+        <div style={modalOverlay} onClick={() => setActiveModal(null)}>
+          <div style={modalBox} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', color: '#2D2D2D', fontSize: '18px' }}>🎧 Log Hearing</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#6B6B6B' }}>What did you hear today?</p>
+
+            <textarea placeholder="e.g. Srila Prabhupada lecture on BG 2.13"
+              value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #FFD700', fontSize: '15px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5', boxSizing: 'border-box', marginBottom: '12px', resize: 'none' }} />
-            <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#6B6B6B' }}>Minutes heard</p>
-            <input type="number" min="0" value={formData.minutes}
+              rows={3}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: '1.5px solid #FFD700', fontSize: '15px',
+                fontFamily: 'Georgia, serif', outline: 'none',
+                color: '#2D2D2D', background: '#FFFAF5',
+                boxSizing: 'border-box', marginBottom: '16px', resize: 'none'
+              }} />
+
+            <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#6B6B6B' }}>Minutes heard today:</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              {[10, 15, 20, 30, 45, 60].map(n => (
+                <button key={n} onClick={() => setFormData({ ...formData, minutes: n })}
+                  style={{
+                    padding: '8px 16px', borderRadius: '999px', border: 'none',
+                    background: formData.minutes === n ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#FFF0E0',
+                    color: formData.minutes === n ? 'white' : '#FF9933',
+                    fontSize: '14px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
+                  }}>{n} min</button>
+              ))}
+            </div>
+            <input type="number" min="0"
+              value={formData.minutes}
               onChange={(e) => setFormData({ ...formData, minutes: parseInt(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #FFD700', fontSize: '18px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5', boxSizing: 'border-box', marginBottom: '20px' }} />
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: '1.5px solid #FFD700', fontSize: '22px',
+                fontFamily: 'Georgia, serif', outline: 'none',
+                color: '#2D2D2D', background: '#FFFAF5',
+                boxSizing: 'border-box', marginBottom: '20px',
+                textAlign: 'center'
+              }} />
+
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setActiveModal(null)} style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Cancel</button>
-              <button onClick={() => saveEntry('hearing', { description: formData.description, minutes: formData.minutes })} disabled={saving}
-                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                {saving ? 'Saving...' : 'Save 🙏'}
+              <button onClick={() => setActiveModal(null)}
+                style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
+                Cancel
+              </button>
+              <button onClick={() => saveEntry('hearing', { description: formData.description, minutes: formData.minutes })}
+                disabled={saving}
+                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: saving ? '#ccc' : 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                {saving ? 'Saving...' : '✅ Save'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Service Modal */}
+      {/* ── SERVICE MODAL ── */}
       {activeModal === 'service' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px', width: '100%', maxWidth: '480px', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={modalOverlay} onClick={() => setActiveModal(null)}>
+          <div style={modalBox} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 8px', color: '#2D2D2D', fontSize: '18px' }}>🪷 Devotional Service</h3>
             <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#6B6B6B' }}>Select all that apply today</p>
             {SERVICES.map((service) => {
@@ -531,7 +622,14 @@ export default function Dashboard() {
                     const updated = selected ? acts.filter(a => a !== service.id) : [...acts, service.id];
                     setFormData({ ...formData, activities: updated });
                   }}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', marginBottom: '8px', background: selected ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#FFFAF5', border: `1.5px solid ${selected ? '#FF9933' : '#FFE0B0'}`, color: selected ? 'white' : '#2D2D2D', fontSize: '14px', cursor: 'pointer', fontFamily: 'Georgia, serif', textAlign: 'left', transition: 'all 0.2s ease' }}>
+                  style={{
+                    width: '100%', padding: '12px 16px', borderRadius: '12px', marginBottom: '8px',
+                    background: selected ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#FFFAF5',
+                    border: `1.5px solid ${selected ? '#FF9933' : '#FFE0B0'}`,
+                    color: selected ? 'white' : '#2D2D2D',
+                    fontSize: '14px', cursor: 'pointer', fontFamily: 'Georgia, serif',
+                    textAlign: 'left', transition: 'all 0.2s ease'
+                  }}>
                   {service.label}
                   {service.id === 'fasting' && <span style={{ fontSize: '11px', marginLeft: '8px', opacity: 0.8 }}>+5 bonus</span>}
                   {service.id === 'seva_of_guru' && <span style={{ fontSize: '11px', marginLeft: '8px', opacity: 0.8 }}>+5 bonus</span>}
@@ -539,15 +637,26 @@ export default function Dashboard() {
               );
             })}
             {(formData.activities || []).includes('others') && (
-              <input type="text" placeholder="Describe your service..." value={formData.other_text || ''}
+              <input type="text" placeholder="Describe your service..."
+                value={formData.other_text || ''}
                 onChange={(e) => setFormData({ ...formData, other_text: e.target.value })}
-                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1.5px solid #FFD700', fontSize: '14px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5', boxSizing: 'border-box', marginBottom: '12px' }} />
+                style={{
+                  width: '100%', padding: '14px', borderRadius: '12px',
+                  border: '1.5px solid #FFD700', fontSize: '14px',
+                  fontFamily: 'Georgia, serif', outline: 'none',
+                  color: '#2D2D2D', background: '#FFFAF5',
+                  boxSizing: 'border-box', marginBottom: '12px'
+                }} />
             )}
             <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-              <button onClick={() => setActiveModal(null)} style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Cancel</button>
-              <button onClick={() => saveEntry('devotional_service', { activities: formData.activities || [], other_text: formData.other_text || '' })} disabled={saving}
-                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-                {saving ? 'Saving...' : 'Save 🙏'}
+              <button onClick={() => setActiveModal(null)}
+                style={{ flex: 1, padding: '14px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
+                Cancel
+              </button>
+              <button onClick={() => saveEntry('devotional_service', { activities: formData.activities || [], other_text: formData.other_text || '' })}
+                disabled={saving}
+                style={{ flex: 2, padding: '14px', borderRadius: '999px', background: saving ? '#ccc' : 'linear-gradient(135deg, #FF9933, #FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                {saving ? 'Saving...' : '✅ Save'}
               </button>
             </div>
           </div>

@@ -1,10 +1,9 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function Splash() {
   const router = useRouter();
-  const [rotation, setRotation] = useState(0);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -12,12 +11,6 @@ export default function Splash() {
       audioRef.current.volume = 0.5;
       audioRef.current.play().catch(() => {});
     }
-
-    let angle = 0;
-    const rotateInterval = setInterval(() => {
-      angle += 1.2;
-      setRotation(angle);
-    }, 16);
 
     const timer = setTimeout(() => {
       const userName = localStorage.getItem('userName');
@@ -29,10 +22,7 @@ export default function Splash() {
       }
     }, 4000);
 
-    return () => {
-      clearInterval(rotateInterval);
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -75,9 +65,7 @@ export default function Splash() {
             width: '240px',
             height: '240px',
             objectFit: 'contain',
-            transform: `rotate(${rotation}deg)`,
             filter: 'drop-shadow(0 0 20px rgba(255, 180, 0, 0.8))',
-            position: 'absolute'
           }}
         />
       </div>
