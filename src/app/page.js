@@ -39,7 +39,6 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Play flute on first user interaction
   useEffect(() => {
     const tryPlay = () => {
       if (audioRef.current && !audioReady) {
@@ -136,103 +135,169 @@ export default function LoginPage() {
 
   return (
     <div style={styles.page}>
-      {/* Flute audio */}
+
       <audio ref={audioRef} loop preload="auto">
         <source src="/flute.mp3" type="audio/mpeg" />
       </audio>
 
-      {/* CSS for animations */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @keyframes chakraSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
         @keyframes fadeInDown {
-          from { opacity: 0; transform: translateY(-18px); }
+          from { opacity: 0; transform: translateY(-24px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(18px); }
+          from { opacity: 0; transform: translateY(24px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes glow {
-          0%, 100% { text-shadow: 0 0 12px rgba(255,153,51,0.5), 0 0 24px rgba(255,215,0,0.3); }
-          50% { text-shadow: 0 0 20px rgba(255,153,51,0.9), 0 0 40px rgba(255,215,0,0.6); }
+        @keyframes goldPulse {
+          0%, 100% { opacity: 0.25; transform: translate(-50%,-50%) scale(1); }
+          50%       { opacity: 0.45; transform: translate(-50%,-50%) scale(1.07); }
         }
-        @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
+        @keyframes textShimmer {
+          0%   { background-position: -400% center; }
+          100% { background-position: 400% center; }
         }
-        .sudarshan-chakra {
-          animation: chakraSpin 8s linear infinite;
-          display: inline-block;
-          font-size: 72px;
-          filter: drop-shadow(0 0 16px rgba(255,215,0,0.7));
+        .anim-down { animation: fadeInDown 0.85s cubic-bezier(0.22,1,0.36,1) forwards; }
+        .anim-up   { animation: fadeInUp  0.85s cubic-bezier(0.22,1,0.36,1) 0.18s forwards; opacity: 0; }
+        .shimmer-title {
+          background: linear-gradient(90deg, #b36800 0%, #FFD700 30%, #fff5a0 50%, #FFD700 70%, #b36800 100%);
+          background-size: 300% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: textShimmer 5s linear infinite;
         }
-        .title-glow {
-          animation: glow 3s ease-in-out infinite;
+        .glow-halo {
+          position: absolute;
+          width: 240px; height: 240px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,200,0,0.28) 0%, transparent 68%);
+          top: 50%; left: 50%;
+          transform: translate(-50%,-50%);
+          animation: goldPulse 3.8s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
         }
-        .fade-in-down {
-          animation: fadeInDown 0.7s ease forwards;
+        .login-input:focus {
+          border-color: #c8860a !important;
+          box-shadow: 0 0 0 3px rgba(200,134,10,0.2) !important;
+          outline: none;
         }
-        .fade-in-up {
-          animation: fadeInUp 0.7s ease forwards;
-          animation-delay: 0.2s;
-          opacity: 0;
+        .submit-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 32px rgba(200,134,10,0.55) !important;
         }
+        .submit-btn:active:not(:disabled) { transform: translateY(0); }
       `}</style>
 
       <div style={styles.card}>
-        {/* Hero section — Sudarshan Chakra + Title */}
-        <div style={styles.heroArea} className="fade-in-down">
-          <div className="sudarshan-chakra">🕉️</div>
 
-          <div style={styles.titleBlock}>
-            <h1 style={styles.mainTitle} className="title-glow">
-              Growing Back to Godhead
-            </h1>
-            <p style={styles.subTitle}>Hare Krishna Sādhana Sangha</p>
-            <div style={styles.mantraText}>
-              हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे
-            </div>
-          </div>
-        </div>
+        {/* ── Hero section ── */}
+        <div style={{ textAlign: 'center', marginBottom: 6 }} className="anim-down">
 
-        {/* Divider */}
-        <div style={styles.divider}>
-          <span style={styles.dividerDot}>🪷</span>
-        </div>
-
-        {/* Login / Register Card */}
-        <div className="fade-in-up">
-          <div style={styles.toggleRow}>
-            <button
+          {/* Chakra with glow halo */}
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
+            <div className="glow-halo" />
+            <img
+              src="/chakra.png"
+              alt="Sudarshan Chakra"
               style={{
-                ...styles.toggleBtn,
-                background: mode === 'login' ? 'linear-gradient(135deg, #FF9933, #FFD700)' : 'transparent',
-                color: mode === 'login' ? '#fff' : '#888',
-                boxShadow: mode === 'login' ? '0 4px 12px rgba(255,153,51,0.3)' : 'none',
+                width: 164,
+                height: 164,
+                objectFit: 'contain',
+                display: 'block',
+                margin: '0 auto',
+                position: 'relative',
+                zIndex: 1,
+                filter:
+                  'drop-shadow(0 0 20px rgba(255,210,0,0.75)) drop-shadow(0 0 50px rgba(255,140,0,0.45))',
               }}
-              onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
-            >Log In</button>
-            <button
-              style={{
-                ...styles.toggleBtn,
-                background: mode === 'register' ? 'linear-gradient(135deg, #FF9933, #FFD700)' : 'transparent',
-                color: mode === 'register' ? '#fff' : '#888',
-                boxShadow: mode === 'register' ? '0 4px 12px rgba(255,153,51,0.3)' : 'none',
-              }}
-              onClick={() => { setMode('register'); setError(''); setSuccess(''); }}
-            >New Account</button>
+            />
           </div>
 
-          <div style={styles.form}>
+          {/* Title */}
+          <h1
+            className="shimmer-title"
+            style={{
+              fontSize: 23,
+              fontWeight: 800,
+              margin: '0 0 7px',
+              letterSpacing: '0.01em',
+              lineHeight: 1.18,
+              fontFamily: "'Georgia', serif",
+            }}
+          >
+            Growing Back to Godhead
+          </h1>
+
+          <p style={{
+            fontSize: 13, color: '#c8a060', margin: '0 0 7px',
+            fontStyle: 'italic', letterSpacing: '0.03em',
+            fontFamily: "'Georgia', serif",
+          }}>
+            Hare Krishna Sādhana Sangha
+          </p>
+
+          <p style={{
+            fontSize: 12, color: '#a07030', margin: 0,
+            letterSpacing: '0.06em', fontWeight: 600,
+            fontFamily: "'Georgia', serif",
+          }}>
+            हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे
+          </p>
+        </div>
+
+        {/* Ornamental divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 16px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(200,134,10,0.4))' }} />
+          <span style={{ fontSize: 15, color: '#c8860a' }}>🪷</span>
+          <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(200,134,10,0.4))' }} />
+        </div>
+
+        {/* ── Login form ── */}
+        <div className="anim-up">
+
+          {/* Tab toggle */}
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255,255,255,0.04)',
+            borderRadius: 12, padding: 4, marginBottom: 20, gap: 4,
+            border: '1px solid rgba(200,134,10,0.2)',
+          }}>
+            {[
+              { id: 'login', label: 'Log In' },
+              { id: 'register', label: 'New Account' },
+            ].map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => { setMode(id); setError(''); setSuccess(''); }}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 9, border: 'none',
+                  cursor: 'pointer', fontSize: 14, fontWeight: 700,
+                  fontFamily: "'Georgia', serif",
+                  transition: 'all 0.25s',
+                  background: mode === id
+                    ? 'linear-gradient(135deg, #b36800, #FFD700)'
+                    : 'transparent',
+                  color: mode === id ? '#1a0800' : '#c8a060',
+                  boxShadow: mode === id ? '0 3px 12px rgba(200,134,10,0.35)' : 'none',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+
             <label style={styles.label}>Your Name</label>
             <input
+              className="login-input"
               type="text"
               placeholder="e.g. Radha Devi Dasi"
               value={name}
@@ -242,79 +307,124 @@ export default function LoginPage() {
 
             <label style={styles.label}>4-Digit PIN</label>
             <input
+              className="login-input"
               type="password"
               inputMode="numeric"
               placeholder="••••"
               maxLength={4}
               value={pin}
               onChange={(e) => handlePinInput(e.target.value, setPin)}
-              style={{ ...styles.input, letterSpacing: '0.4em', fontSize: 24, textAlign: 'center' }}
+              style={{ ...styles.input, letterSpacing: '0.5em', fontSize: 24, textAlign: 'center' }}
             />
 
             {mode === 'register' && (
               <>
                 <label style={styles.label}>Confirm PIN</label>
                 <input
+                  className="login-input"
                   type="password"
                   inputMode="numeric"
                   placeholder="••••"
                   maxLength={4}
                   value={confirmPin}
                   onChange={(e) => handlePinInput(e.target.value, setConfirmPin)}
-                  style={{ ...styles.input, letterSpacing: '0.4em', fontSize: 24, textAlign: 'center' }}
+                  style={{ ...styles.input, letterSpacing: '0.5em', fontSize: 24, textAlign: 'center' }}
                 />
               </>
             )}
 
-            {/* PIN dots indicator */}
-            <div style={styles.pinDots}>
+            {/* PIN dot indicators */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginTop: 10, marginBottom: 4 }}>
               {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    ...styles.dot,
-                    background: pin.length > i
-                      ? 'linear-gradient(135deg, #FF9933, #FFD700)'
-                      : '#e0d8d0',
-                    transform: pin.length > i ? 'scale(1.2)' : 'scale(1)',
-                    transition: 'all 0.2s ease',
-                  }}
-                />
+                <div key={i} style={{
+                  width: 12, height: 12, borderRadius: '50%',
+                  transition: 'all 0.2s ease',
+                  background: pin.length > i
+                    ? 'linear-gradient(135deg, #b36800, #FFD700)'
+                    : 'rgba(255,255,255,0.1)',
+                  border: pin.length > i ? 'none' : '1.5px solid rgba(200,134,10,0.3)',
+                  transform: pin.length > i ? 'scale(1.3)' : 'scale(1)',
+                  boxShadow: pin.length > i ? '0 0 10px rgba(255,215,0,0.55)' : 'none',
+                }} />
               ))}
             </div>
 
-            {error && <div style={styles.errorBox}>⚠️ {error}</div>}
-            {success && <div style={styles.successBox}>✅ {success}</div>}
+            {error && (
+              <div style={{
+                background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.4)',
+                borderRadius: 10, padding: '10px 14px', color: '#ff8b7a',
+                fontSize: 13, marginTop: 8, lineHeight: 1.4,
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+            {success && (
+              <div style={{
+                background: 'rgba(39,174,96,0.15)', border: '1px solid rgba(39,174,96,0.4)',
+                borderRadius: 10, padding: '10px 14px', color: '#6ee7a0',
+                fontSize: 13, marginTop: 8,
+              }}>
+                ✅ {success}
+              </div>
+            )}
 
             <button
-              style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
+              className="submit-btn"
               onClick={mode === 'login' ? handleLogin : handleRegister}
               disabled={loading}
+              style={{
+                marginTop: 18, padding: '15px',
+                background: 'linear-gradient(135deg, #b36800 0%, #FFD700 50%, #b36800 100%)',
+                backgroundSize: '200% auto',
+                color: '#1a0800', border: 'none', borderRadius: 14,
+                fontSize: 16, fontWeight: 800,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.65 : 1,
+                boxShadow: '0 6px 22px rgba(180,120,0,0.4)',
+                transition: 'all 0.2s ease',
+                fontFamily: "'Georgia', serif",
+                letterSpacing: '0.02em',
+              }}
             >
-              {loading
-                ? 'Please wait…'
-                : mode === 'login'
-                  ? '🙏 Log In'
-                  : '🙏 Create Account'}
+              {loading ? 'Please wait…' : mode === 'login' ? '🙏 Log In' : '🙏 Create Account'}
             </button>
           </div>
 
-          <p style={styles.helperText}>
+          <p style={{
+            fontSize: 12, color: 'rgba(200,160,96,0.6)',
+            textAlign: 'center', marginTop: 16, lineHeight: 1.5,
+            fontFamily: "'Georgia', serif",
+          }}>
             {mode === 'login'
               ? "Don't have an account? Switch to 'New Account' above."
               : 'Remember your name exactly as entered — it is used to find your account.'}
           </p>
+
           {mode === 'login' && (
-            <p style={styles.forgotNote}>
+            <p style={{
+              fontSize: 11, color: 'rgba(200,160,96,0.35)',
+              textAlign: 'center', marginTop: 6,
+              fontFamily: "'Georgia', serif",
+            }}>
               Forgot your PIN? Contact your group admin to reset your account.
             </p>
           )}
         </div>
 
         {/* Footer */}
-        <div style={styles.footer}>
-          <p style={styles.footerText}>🎵 Tap anywhere to hear the flute</p>
+        <div style={{
+          textAlign: 'center', marginTop: 20, paddingTop: 14,
+          borderTop: '1px solid rgba(200,134,10,0.12)',
+        }}>
+          <p style={{
+            fontSize: 11, color: 'rgba(200,160,96,0.4)',
+            margin: 0, fontStyle: 'italic',
+            fontFamily: "'Georgia', serif",
+          }}>
+            🎵 Tap anywhere to hear the flute
+          </p>
         </div>
+
       </div>
     </div>
   );
@@ -323,22 +433,26 @@ export default function LoginPage() {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: 'linear-gradient(160deg, #1a0a00 0%, #2d1200 30%, #3d1f00 60%, #1a0a00 100%)',
+    background: 'radial-gradient(ellipse at 50% 15%, #261000 0%, #0e0500 45%, #000000 100%)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '20px',
+    padding: '24px 16px',
     fontFamily: "'Georgia', serif",
     position: 'relative',
     overflow: 'hidden',
   },
   card: {
-    background: 'rgba(255,248,235,0.97)',
+    background: 'linear-gradient(160deg, rgba(28,12,0,0.98) 0%, rgba(16,6,0,0.99) 100%)',
     borderRadius: 28,
-    padding: '32px 28px 24px',
+    padding: '32px 26px 24px',
     width: '100%',
     maxWidth: 420,
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,215,0,0.2)',
+    boxShadow: [
+      '0 0 0 1px rgba(200,134,10,0.22)',
+      '0 32px 90px rgba(0,0,0,0.75)',
+      'inset 0 1px 0 rgba(255,215,0,0.07)',
+    ].join(', '),
     position: 'relative',
     zIndex: 1,
   },
@@ -347,172 +461,36 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#1a0a00',
+    background: '#000',
   },
   spinner: {
-    width: 40,
-    height: 40,
-    border: '3px solid rgba(255,215,0,0.2)',
+    width: 40, height: 40,
+    border: '3px solid rgba(200,134,10,0.2)',
     borderTop: '3px solid #FFD700',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
-  heroArea: {
-    textAlign: 'center',
-    marginBottom: 8,
-    paddingBottom: 4,
-  },
-  titleBlock: {
-    marginTop: 12,
-  },
-  mainTitle: {
-    fontSize: 22,
-    fontWeight: 800,
-    color: '#b35000',
-    margin: '0 0 4px',
-    letterSpacing: '0.01em',
-    lineHeight: 1.2,
-  },
-  subTitle: {
-    fontSize: 13,
-    color: '#8B5E00',
-    margin: '0 0 8px',
-    fontStyle: 'italic',
-  },
-  mantraText: {
-    fontSize: 12,
-    color: '#c47a00',
-    letterSpacing: '0.04em',
-    fontWeight: 600,
-    opacity: 0.85,
-  },
-  divider: {
-    textAlign: 'center',
-    margin: '12px 0',
-    position: 'relative',
-  },
-  dividerDot: {
-    fontSize: 18,
-    background: 'rgba(255,248,235,0.97)',
-    padding: '0 8px',
-    position: 'relative',
-    zIndex: 1,
-  },
-  toggleRow: {
-    display: 'flex',
-    background: '#f5ece0',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-    gap: 4,
-  },
-  toggleBtn: {
-    flex: 1,
-    padding: '10px 0',
-    borderRadius: 10,
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 700,
-    transition: 'all 0.25s',
-    fontFamily: "'Georgia', serif",
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
   label: {
     fontSize: 11,
     fontWeight: 700,
-    color: '#a06020',
+    color: '#906820',
     textTransform: 'uppercase',
-    letterSpacing: '0.07em',
+    letterSpacing: '0.08em',
     marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 5,
+    fontFamily: "'Georgia', serif",
   },
   input: {
-    padding: '12px 14px',
+    padding: '13px 15px',
     borderRadius: 12,
-    border: '1.5px solid #e8d5b0',
+    border: '1.5px solid rgba(200,134,10,0.28)',
     fontSize: 16,
-    outline: 'none',
     width: '100%',
     boxSizing: 'border-box',
-    background: '#fffaf3',
-    color: '#2D2D2D',
+    background: 'rgba(255,255,255,0.04)',
+    color: '#f0ddb0',
     fontFamily: "'Georgia', serif",
-    transition: 'border-color 0.2s',
-  },
-  pinDots: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 12,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  dot: {
-    width: 13,
-    height: 13,
-    borderRadius: '50%',
-  },
-  errorBox: {
-    background: '#fff0ee',
-    border: '1px solid #ffccc0',
-    borderRadius: 10,
-    padding: '10px 14px',
-    color: '#c0392b',
-    fontSize: 13,
-    marginTop: 8,
-    lineHeight: 1.4,
-  },
-  successBox: {
-    background: '#f0fff4',
-    border: '1px solid #b2f5c8',
-    borderRadius: 10,
-    padding: '10px 14px',
-    color: '#27ae60',
-    fontSize: 13,
-    marginTop: 8,
-  },
-  submitBtn: {
-    marginTop: 18,
-    padding: '15px',
-    background: 'linear-gradient(135deg, #FF9933, #FFD700)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 14,
-    fontSize: 16,
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 6px 20px rgba(255,153,51,0.4)',
-    transition: 'opacity 0.2s, transform 0.1s',
-    fontFamily: "'Georgia', serif",
-    letterSpacing: '0.02em',
-  },
-  helperText: {
-    fontSize: 12,
-    color: '#aaa',
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 1.5,
-  },
-  forgotNote: {
-    fontSize: 11,
-    color: '#bbb',
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  footer: {
-    textAlign: 'center',
-    marginTop: 16,
-    paddingTop: 12,
-    borderTop: '1px solid #f0e0c8',
-  },
-  footerText: {
-    fontSize: 11,
-    color: '#c8a060',
-    margin: 0,
-    fontStyle: 'italic',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+    outline: 'none',
   },
 };
