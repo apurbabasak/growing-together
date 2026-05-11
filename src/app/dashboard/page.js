@@ -79,43 +79,74 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Helper to subscribe to a sangha by code
+  function subscribeSangha(code, uid) {
+    const sanghaRef = doc(db, 'sanghas', code);
+    const unsub = onSnapshot(sanghaRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setMembers(data.members || {});
+        const myEntry = data.members?.[uid]?.daily_entries?.[today] || null;
+        setTodayEntry(myEntry);
+      }
+    });
+    return unsub;
+  }
+
   useEffect(() => {
     const name = localStorage.getItem('userName') || 'Devotee';
     const uid = localStorage.getItem('userId') || '';
     const code = localStorage.getItem('sanghaCode') || '';
     setUserName(name);
     setUserId(uid);
-    setSanghaCode(code);
+
     if (code) {
-      const sanghaRef = doc(db, 'sanghas', code);
-      const unsub = onSnapshot(sanghaRef, (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          setMembers(data.members || {});
-          const myEntry = data.members?.[uid]?.daily_entries?.[today] || null;
-          setTodayEntry(myEntry);
+      // sanghaCode already in localStorage — subscribe immediately
+      setSanghaCode(code);
+      const unsub = subscribeSangha(code, uid);
+      return () => unsub();
+    } else if (uid) {
+      // sanghaCode missing — fetch from Firestore users collection
+      let unsub = () => {};
+      (async () => {
+        try {
+          const userRef = doc(db, 'users', uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            const fetchedCode = userData.sangha || '';
+            if (fetchedCode) {
+              localStorage.setItem('sanghaCode', fetchedCode);
+              setSanghaCode(fetchedCode);
+              unsub = subscribeSangha(fetchedCode, uid);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch sanghaCode from Firestore:', err);
         }
-      });
+      })();
       return () => unsub();
     }
   }, []);
 
   const saveEntry = async (type, data) => {
     setSaving(true);
-    const sanghaRef = doc(db, 'sanghas', sanghaCode);
+    const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
+    const uid = userId || localStorage.getItem('userId') || '';
+    const sanghaRef = doc(db, 'sanghas', code);
     const snap = await getDoc(sanghaRef);
     const existing = snap.data();
-    const currentEntry = existing?.members?.[userId]?.daily_entries?.[today] || {};
+    const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
     const updatedEntry = { ...currentEntry, [type]: data };
     updatedEntry.aggregate_score = calculateScore(updatedEntry);
     await setDoc(sanghaRef, {
       ...existing,
       members: {
         ...existing.members,
-        [userId]: {
-          ...existing.members[userId],
+        [uid]: {
+          ...existing.members[uid],
           daily_entries: {
-            ...(existing.members[userId]?.daily_entries || {}),
+            ...(existing.members[uid]?.daily_entries || {}),
             [today]: updatedEntry
           }
         }
@@ -127,20 +158,22 @@ export default function Dashboard() {
 
   const saveJpsApp = async (value) => {
     setJpsSaving(true);
-    const sanghaRef = doc(db, 'sanghas', sanghaCode);
+    const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
+    const uid = userId || localStorage.getItem('userId') || '';
+    const sanghaRef = doc(db, 'sanghas', code);
     const snap = await getDoc(sanghaRef);
     const existing = snap.data();
-    const currentEntry = existing?.members?.[userId]?.daily_entries?.[today] || {};
+    const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
     const updatedEntry = { ...currentEntry, jps_app: { read: value } };
     updatedEntry.aggregate_score = calculateScore(updatedEntry);
     await setDoc(sanghaRef, {
       ...existing,
       members: {
         ...existing.members,
-        [userId]: {
-          ...existing.members[userId],
+        [uid]: {
+          ...existing.members[uid],
           daily_entries: {
-            ...(existing.members[userId]?.daily_entries || {}),
+            ...(existing.members[uid]?.daily_entries || {}),
             [today]: updatedEntry
           }
         }
@@ -152,20 +185,22 @@ export default function Dashboard() {
   const saveChantingTime = async (time) => {
     setTimeSaving(true);
     const bonus = isBonus(time);
-    const sanghaRef = doc(db, 'sanghas', sanghaCode);
+    const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
+    const uid = userId || localStorage.getItem('userId') || '';
+    const sanghaRef = doc(db, 'sanghas', code);
     const snap = await getDoc(sanghaRef);
     const existing = snap.data();
-    const currentEntry = existing?.members?.[userId]?.daily_entries?.[today] || {};
+    const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
     const updatedEntry = { ...currentEntry, chanting_time: { time, bonus } };
     updatedEntry.aggregate_score = calculateScore(updatedEntry);
     await setDoc(sanghaRef, {
       ...existing,
       members: {
         ...existing.members,
-        [userId]: {
-          ...existing.members[userId],
+        [uid]: {
+          ...existing.members[uid],
           daily_entries: {
-            ...(existing.members[userId]?.daily_entries || {}),
+            ...(existing.members[uid]?.daily_entries || {}),
             [today]: updatedEntry
           }
         }
@@ -426,47 +461,50 @@ export default function Dashboard() {
             <div>
               <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>📱 JPS App</h3>
               <p style={{ margin: 0, fontSize: '13px', color: '#6B6B6B' }}>
-                {jpsRead === true ? '✅ Read today — +5 bonus points!' : jpsRead === false ? '❌ Not read today' : 'Did you read JPS App today?'}
+                {jpsRead === true ? '✅ Read today — +5 bonus points!' : jpsRead === false ? '❌ Not read today' : 'Did you read the JPS App today?'}
               </p>
             </div>
-            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#22c55e' }}>
-              {jpsRead === true ? '+5 pts' : '0 pts'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', marginTop: '14px' }}>
-            <button onClick={() => saveJpsApp(true)} disabled={jpsSaving}
-              style={{
-                flex: 1, padding: '12px', borderRadius: '999px',
-                background: jpsRead === true ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#f0fdf4',
-                border: jpsRead === true ? 'none' : '2px solid #22c55e',
-                color: jpsRead === true ? 'white' : '#22c55e',
-                fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
-              }}>✅ Yes</button>
-            <button onClick={() => saveJpsApp(false)} disabled={jpsSaving}
-              style={{
-                flex: 1, padding: '12px', borderRadius: '999px',
-                background: jpsRead === false ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#fff5f5',
-                border: jpsRead === false ? 'none' : '2px solid #ef4444',
-                color: jpsRead === false ? 'white' : '#ef4444',
-                fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold'
-              }}>❌ No</button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => !jpsSaving && saveJpsApp(true)}
+                style={{
+                  padding: '8px 14px', borderRadius: '999px', border: 'none',
+                  background: jpsRead === true ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#f0fdf4',
+                  color: jpsRead === true ? 'white' : '#22c55e',
+                  fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif',
+                  fontWeight: jpsRead === true ? 'bold' : 'normal',
+                  opacity: jpsSaving ? 0.6 : 1
+                }}>
+                ✅ Yes
+              </button>
+              <button
+                onClick={() => !jpsSaving && saveJpsApp(false)}
+                style={{
+                  padding: '8px 14px', borderRadius: '999px', border: 'none',
+                  background: jpsRead === false ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#fff5f5',
+                  color: jpsRead === false ? 'white' : '#ef4444',
+                  fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif',
+                  fontWeight: jpsRead === false ? 'bold' : 'normal',
+                  opacity: jpsSaving ? 0.6 : 1
+                }}>
+                ❌ No
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Chanting Finish Time Card */}
+        {/* Chanting Time Card */}
         <div style={{
           background: 'white', borderRadius: '20px', padding: '18px',
           marginBottom: '12px', boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
           border: '1px solid rgba(255,153,51,0.15)'
         }}>
-          <div style={{ marginBottom: '12px' }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>⏰ Chanting Finish Time</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#6B6B6B' }}>
-              {chantingTime?.time
-                ? `Finished at ${chantingTime.time}${chantingTime.bonus ? ' — 🌟 +3 Brahma-muhurta bonus!' : ''}`
-                : 'What time did you finish chanting?'}
-            </p>
-          </div>
+          <h3 style={{ margin: '0 0 6px', fontSize: '16px', color: '#2D2D2D' }}>⏰ Chanting Finish Time</h3>
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#6B6B6B' }}>
+            {chantingTime?.time
+              ? `Finished at ${chantingTime.time}${chantingTime.bonus ? ' — 🌟 +3 Brahma-muhurta bonus!' : ''}`
+              : 'What time did you finish chanting?'}
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {CHANTING_TIMES.map(time => {
               const selected = chantingTime?.time === time;
@@ -490,24 +528,8 @@ export default function Dashboard() {
               );
             })}
           </div>
-          {chantingTime?.bonus && (
-            <div style={{ marginTop: '12px', background: '#f0fdf4', borderRadius: '12px', padding: '10px 14px', border: '1px solid #86efac' }}>
-              <p style={{ margin: 0, fontSize: '13px', color: '#22c55e', fontWeight: 'bold' }}>
-                🌟 Brahma-muhurta bonus! +3 points for chanting 4 AM – 9 AM
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Sangha Code */}
-        <div style={{
-          background: 'white', borderRadius: '16px', padding: '14px 18px',
-          marginTop: '12px', border: '1px dashed #FFD700', textAlign: 'center'
-        }}>
-          <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#6B6B6B' }}>Your Sangha Code</p>
-          <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#FF9933', letterSpacing: '2px' }}>{sanghaCode}</p>
-          <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6B6B6B' }}>Share this with devotees to join your group</p>
-        </div>
       </div>
 
       {/* CHANTING MODAL */}

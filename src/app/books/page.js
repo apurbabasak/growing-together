@@ -2,15 +2,15 @@
 import { useState } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ALL BOOKS FROM VEDABASE.IO — verified URL codes & structure
+// ALL BOOKS FROM VEDABASE.IO – verified URL codes & structure
 // URL patterns:
 //   SB  → /sb/{canto}/{chapter}/{verse}/    (3 levels)
 //   CC  → /cc/{part}/{chapter}/{verse}/     (3 levels)
 //   BG  → /bg/{chapter}/{verse}/            (2 levels)
 //   BS  → /bs/5/{verse}/                    (fixed chapter 5, then verse)
-//   NOI → /noi/{text}/                      (1 level — text IS the item)
-//   ISO → /iso/{mantra}/                    (1 level — mantra IS the item)
-//   NOD → /nod/{chapter}/                   (1 level — chapter IS the item)
+//   NOI → /noi/{text}/                      (1 level – text IS the item)
+//   ISO → /iso/{mantra}/                    (1 level – mantra IS the item)
+//   NOD → /nod/{chapter}/                   (1 level – chapter IS the item)
 //   KB  → /kb/{chapter}/                    (1 level)
 //   TLC → /tlc/{chapter}/                   (1 level)
 //   SSR → /ssr/{chapter}/                   (1 level)
@@ -21,15 +21,15 @@ import { useState } from 'react';
 //   OWK → /owk/{chapter}/                   (1 level)
 //   POY → /poy/{chapter}/                   (1 level)
 //   PQPA→ /pqpa/{chapter}/                  (1 level)
-//   SPL → /spl/{chapter}/                   (1 level — biography)
-//   EJP → /ejop/{chapter}/                  (1 level)
-//   MG  → /mog/{chapter}/                   (1 level)
-//   CT  → /ct/{chapter}/                    (1 level)
-//   LON → /lon/{chapter}/                   (1 level)
-//   MMS → /mms/{chapter}/                   (1 level)
-//   NBS → /nbs/{sutra}/                     (1 level)
-//   CB  → /cb/{chapter}/                    (1 level)
-//   KRP → /krp/{chapter}/                   (1 level)
+//   KRP → /krp/                             (single essay – no sub-pages)
+//   LON → /lon/                             (root only – not fully imported)
+//   EJOP→ /ejop/                            (root only – not fully imported)
+//   MOG → /mog/                             (root only – not fully imported)
+//   CT  → /ct/                              (root only – not fully imported)
+//   MMS → /mms/                             (root only – not fully imported)
+//   NBS → /nbs/                             (root only – not fully imported)
+//   CB  → /cb/                              (root only – not fully imported)
+//   SPL → /spl/                             (root only – not fully imported)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BOOKS = [
@@ -108,7 +108,7 @@ const BOOKS = [
     id: 'bs',
     title: 'Brahma-saṁhitā',
     shortTitle: 'BS',
-    emoji: '🔱',
+    emoji: '📱',
     category: 'Major Scriptures',
     urlType: 'bs-verse',  // /bs/5/{verse}/
     verses: 62,
@@ -230,11 +230,9 @@ const BOOKS = [
     shortTitle: 'KRP',
     emoji: '🌊',
     category: 'Krishna Consciousness',
-    urlType: 'single',   // /krp/{chapter}/
-    items: Array.from({ length: 1 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Single essay — no numbered chapters on vedabase.io
+    // URL: https://vedabase.io/en/library/krp/
+    urlType: 'root-only',
   },
 
   {
@@ -283,13 +281,10 @@ const BOOKS = [
     emoji: '❓',
     category: 'Krishna Consciousness',
     urlType: 'single',   // /pqpa/{chapter}/
-    items: [
-      { number: 'introduction', title: 'Introduction' },
-      ...Array.from({ length: 7 }, (_, i) => ({
-        number: i + 1,
-        title: `Chapter ${i + 1}`,
-      })),
-    ],
+    items: Array.from({ length: 9 }, (_, i) => ({
+      number: i + 1,
+      title: `Chapter ${i + 1}`,
+    })),
   },
 
   // ── LIGHT & NATURE ────────────────────────────────────────────────────────
@@ -312,11 +307,8 @@ const BOOKS = [
     shortTitle: 'LON',
     emoji: '🌿',
     category: 'Light & Nature',
-    urlType: 'single',   // /lon/{chapter}/
-    items: Array.from({ length: 4 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
   {
@@ -325,25 +317,19 @@ const BOOKS = [
     shortTitle: 'EJOP',
     emoji: '🚀',
     category: 'Light & Nature',
-    urlType: 'single',   // /ejop/{chapter}/
-    items: Array.from({ length: 2 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
-  // ── DEVOTIONAL TEXTS ─────────────────────────────────────────────────────
+  // ── DEVOTIONAL TEXTS ──────────────────────────────────────────────────────
   {
     id: 'mog',
     title: 'Message of Godhead',
     shortTitle: 'MOG',
     emoji: '📜',
     category: 'Devotional Texts',
-    urlType: 'single',   // /mog/{chapter}/
-    items: Array.from({ length: 6 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
   {
@@ -352,11 +338,8 @@ const BOOKS = [
     shortTitle: 'CT',
     emoji: '🏛️',
     category: 'Devotional Texts',
-    urlType: 'single',   // /ct/{chapter}/
-    items: Array.from({ length: 11 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
   {
@@ -365,11 +348,8 @@ const BOOKS = [
     shortTitle: 'MMS',
     emoji: '🌺',
     category: 'Devotional Texts',
-    urlType: 'single',   // /mms/{verse}/
-    items: Array.from({ length: 41 }, (_, i) => ({
-      number: i + 1,
-      title: `Text ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
   {
@@ -378,11 +358,8 @@ const BOOKS = [
     shortTitle: 'NBS',
     emoji: '🎵',
     category: 'Devotional Texts',
-    urlType: 'single',   // /nbs/{sutra}/
-    items: Array.from({ length: 84 }, (_, i) => ({
-      number: i + 1,
-      title: `Sūtra ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
   {
@@ -391,11 +368,8 @@ const BOOKS = [
     shortTitle: 'CB',
     emoji: '🔄',
     category: 'Devotional Texts',
-    urlType: 'single',   // /cb/{chapter}/
-    items: Array.from({ length: 11 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 
   // ── BIOGRAPHY ─────────────────────────────────────────────────────────────
@@ -405,11 +379,8 @@ const BOOKS = [
     shortTitle: 'SPL',
     emoji: '📿',
     category: 'Biography',
-    urlType: 'single',   // /spl/{chapter}/
-    items: Array.from({ length: 58 }, (_, i) => ({
-      number: i + 1,
-      title: `Chapter ${i + 1}`,
-    })),
+    // Not fully imported on vedabase.io — links to book root
+    urlType: 'root-only',
   },
 ];
 
@@ -440,6 +411,10 @@ function buildUrl(book, item, subItem, subSubItem) {
       // BS: /bs/5/{verse}/
       return `${base}/${book.id}/5/${item}/`;
 
+    case 'root-only':
+      // Books not fully imported — go straight to book root
+      return `${base}/${book.id}/`;
+
     case 'single':
     default:
       // All other books: /{id}/{item}/
@@ -469,7 +444,7 @@ export default function BooksPage() {
     return matchesCategory && matchesSearch;
   });
 
-  // ── VERSE LIST (BG) ───────────────────────────────────────────────────────
+  // ── VERSE LIST (BG) ──────────────────────────────────────────────────────
   const renderVerseList = (book, chapter) => {
     const chData = book.chapters.find((c) => c.number === chapter);
     if (!chData) return null;
@@ -494,7 +469,7 @@ export default function BooksPage() {
     );
   };
 
-  // ── SB CHAPTER LIST ───────────────────────────────────────────────────────
+  // ── SB CHAPTER LIST ──────────────────────────────────────────────────────
   const renderSbChapters = (canto) => {
     return (
       <div style={styles.chapterList}>
@@ -516,7 +491,7 @@ export default function BooksPage() {
     );
   };
 
-  // ── CC CHAPTER LIST ───────────────────────────────────────────────────────
+  // ── CC CHAPTER LIST ──────────────────────────────────────────────────────
   const renderCcChapters = (part) => {
     return (
       <div style={styles.chapterList}>
@@ -565,6 +540,42 @@ export default function BooksPage() {
     );
   };
 
+  // ── ROOT-ONLY BOOKS (KRP, LON, EJOP, MOG, CT, MMS, NBS, CB, SPL) ─────────
+  const renderRootOnly = (book) => {
+    const url = buildUrl(book);
+    return (
+      <div style={styles.chapterList}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            ...styles.chapterBtn,
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #fff8f0, #fff3e6)',
+            border: '1.5px solid #f0c080',
+            fontWeight: 600,
+            color: '#b85c00',
+            padding: '14px 20px',
+          }}
+        >
+          📖 Open {book.shortTitle} on Vedabase
+        </a>
+        <p style={{
+          fontSize: 12,
+          color: '#999',
+          textAlign: 'center',
+          marginTop: 10,
+          fontStyle: 'italic',
+          lineHeight: 1.5,
+        }}>
+          This book opens directly on vedabase.io.{'\n'}
+          Chapter navigation is available on the Vedabase website.
+        </p>
+      </div>
+    );
+  };
+
   // ── BOOK DETAIL ───────────────────────────────────────────────────────────
   const renderBookDetail = () => {
     if (!selectedBook) return null;
@@ -584,10 +595,10 @@ export default function BooksPage() {
           >
             ← Back
           </button>
-          <span style={styles.detailEmoji}>{book.emoji}</span>
           <div>
+            <div style={styles.detailEmoji}>{book.emoji}</div>
             <div style={styles.detailTitle}>{book.title}</div>
-            <div style={styles.detailShort}>{book.shortTitle} · {book.category}</div>
+            <div style={styles.detailShort}>{book.shortTitle}</div>
           </div>
         </div>
 
@@ -603,7 +614,8 @@ export default function BooksPage() {
                     ...styles.chapterBtn,
                     background:
                       selectedChapter === ch.number ? '#ff6b35' : undefined,
-                    color: selectedChapter === ch.number ? '#fff' : undefined,
+                    color:
+                      selectedChapter === ch.number ? '#fff' : undefined,
                   }}
                   onClick={() =>
                     setSelectedChapter(
@@ -611,7 +623,7 @@ export default function BooksPage() {
                     )
                   }
                 >
-                  Ch {ch.number}: {ch.title}
+                  Chapter {ch.number}: {ch.title}
                 </button>
               ))}
             </div>
@@ -641,13 +653,14 @@ export default function BooksPage() {
                     color:
                       selectedCanto?.number === canto.number ? '#fff' : undefined,
                   }}
-                  onClick={() =>
+                  onClick={() => {
                     setSelectedCanto(
                       selectedCanto?.number === canto.number ? null : canto
-                    )
-                  }
+                    );
+                    setSelectedChapter(null);
+                  }}
                 >
-                  Canto {canto.number}: {canto.title}
+                  Canto {canto.number}: {canto.title} ({canto.chapters} chapters)
                 </button>
               ))}
             </div>
@@ -658,36 +671,26 @@ export default function BooksPage() {
               </>
             )}
             {selectedCanto && selectedChapter && (
-              <div style={styles.verseGrid}>
-                {Array.from({ length: 30 }, (_, i) => {
-                  const v = i + 1;
-                  const url = buildUrl(
-                    book,
-                    selectedCanto.number,
-                    selectedChapter,
-                    v
-                  );
-                  return (
-                    <a
-                      key={v}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.verseBtn}
-                    >
-                      {v}
-                    </a>
-                  );
-                })}
+              <>
+                <p style={styles.sectionLabel}>
+                  Opening SB {selectedCanto.number}.{selectedChapter} on Vedabase
+                </p>
                 <a
-                  href={`https://vedabase.io/en/library/sb/${selectedCanto.number}/${selectedChapter}/`}
+                  href={buildUrl(book, selectedCanto.number, selectedChapter)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ ...styles.verseBtn, background: '#eee', color: '#333' }}
+                  style={{
+                    ...styles.chapterBtn,
+                    textAlign: 'center',
+                    background: '#fff8f0',
+                    border: '1.5px solid #f0c080',
+                    fontWeight: 600,
+                    color: '#b85c00',
+                  }}
                 >
-                  All →
+                  📖 Open Chapter on Vedabase
                 </a>
-              </div>
+              </>
             )}
           </div>
         )}
@@ -695,7 +698,7 @@ export default function BooksPage() {
         {/* CC */}
         {book.urlType === 'part-chapter-verse' && (
           <div>
-            <p style={styles.sectionLabel}>Select Part (Līlā)</p>
+            <p style={styles.sectionLabel}>Select Part</p>
             <div style={styles.chapterList}>
               {book.parts.map((part) => (
                 <button
@@ -739,6 +742,14 @@ export default function BooksPage() {
           <>
             <p style={styles.sectionLabel}>Select</p>
             {renderSingleItems(book)}
+          </>
+        )}
+
+        {/* Root-only books (KRP, LON, EJOP, MOG, CT, MMS, NBS, CB, SPL) */}
+        {book.urlType === 'root-only' && (
+          <>
+            <p style={styles.sectionLabel}>Read on Vedabase</p>
+            {renderRootOnly(book)}
           </>
         )}
       </div>

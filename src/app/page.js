@@ -77,7 +77,8 @@ export default function LoginPage() {
       }
       localStorage.setItem('userId', userId);
       localStorage.setItem('userName', userData.name);
-      if (userData.sangha) localStorage.setItem('sangha', userData.sangha);
+      // FIX: save as 'sanghaCode' so dashboard can read it
+      if (userData.sangha) localStorage.setItem('sanghaCode', userData.sangha);
       setSuccess(`Welcome back, ${userData.name}! 🙏`);
       setTimeout(() => router.replace('/dashboard'), 1000);
     } catch (err) {
@@ -196,7 +197,7 @@ export default function LoginPage() {
 
       <div style={styles.card}>
 
-        {/* ── Hero section ── */}
+        {/* Hero section */}
         <div style={{ textAlign: 'center', marginBottom: 6 }} className="anim-down">
 
           {/* Chakra with glow halo */}
@@ -258,7 +259,7 @@ export default function LoginPage() {
           <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(200,134,10,0.4))' }} />
         </div>
 
-        {/* ── Login form ── */}
+        {/* Login form */}
         <div className="anim-up">
 
           {/* Tab toggle */}
