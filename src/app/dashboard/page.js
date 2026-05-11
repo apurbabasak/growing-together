@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import BottomNav from '../components/BottomNav';
 
 function calculateScore(entry) {
@@ -79,7 +79,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Helper to subscribe to a sangha by code
   function subscribeSangha(code, uid) {
     const sanghaRef = doc(db, 'sanghas', code);
     const unsub = onSnapshot(sanghaRef, (snap) => {
@@ -101,12 +100,10 @@ export default function Dashboard() {
     setUserId(uid);
 
     if (code) {
-      // sanghaCode already in localStorage — subscribe immediately
       setSanghaCode(code);
       const unsub = subscribeSangha(code, uid);
       return () => unsub();
     } else if (uid) {
-      // sanghaCode missing — fetch from Firestore users collection
       let unsub = () => {};
       (async () => {
         try {
@@ -129,84 +126,94 @@ export default function Dashboard() {
     }
   }, []);
 
+  // ✅ FIXED: Use updateDoc with dot-notation to avoid full-document spread hanging
   const saveEntry = async (type, data) => {
     setSaving(true);
-    const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
-    const uid = userId || localStorage.getItem('userId') || '';
-    const sanghaRef = doc(db, 'sanghas', code);
-    const snap = await getDoc(sanghaRef);
-    const existing = snap.data();
-    const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
-    const updatedEntry = { ...currentEntry, [type]: data };
-    updatedEntry.aggregate_score = calculateScore(updatedEntry);
-    await setDoc(sanghaRef, {
-      ...existing,
-      members: {
-        ...existing.members,
-        [uid]: {
-          ...existing.members[uid],
-          daily_entries: {
-            ...(existing.members[uid]?.daily_entries || {}),
-            [today]: updatedEntry
-          }
-        }
+    try {
+      const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
+      const uid = userId || localStorage.getItem('userId') || '';
+      const sanghaRef = doc(db, 'sanghas', code);
+      const snap = await getDoc(sanghaRef);
+
+      if (!snap.exists()) {
+        setSaving(false);
+        return;
       }
-    });
-    setSaving(false);
-    setActiveModal(null);
+
+      const existing = snap.data();
+      const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
+      const updatedEntry = { ...currentEntry, [type]: data };
+      updatedEntry.aggregate_score = calculateScore(updatedEntry);
+
+      // Use dot-notation key to update only this user's today entry — no full spread
+      await updateDoc(sanghaRef, {
+        [`members.${uid}.daily_entries.${today}`]: updatedEntry,
+      });
+    } catch (err) {
+      console.error('saveEntry error:', err);
+    } finally {
+      setSaving(false);
+      setActiveModal(null);
+    }
   };
 
+  // ✅ FIXED: Same updateDoc approach for JPS App
   const saveJpsApp = async (value) => {
     setJpsSaving(true);
-    const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
-    const uid = userId || localStorage.getItem('userId') || '';
-    const sanghaRef = doc(db, 'sanghas', code);
-    const snap = await getDoc(sanghaRef);
-    const existing = snap.data();
-    const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
-    const updatedEntry = { ...currentEntry, jps_app: { read: value } };
-    updatedEntry.aggregate_score = calculateScore(updatedEntry);
-    await setDoc(sanghaRef, {
-      ...existing,
-      members: {
-        ...existing.members,
-        [uid]: {
-          ...existing.members[uid],
-          daily_entries: {
-            ...(existing.members[uid]?.daily_entries || {}),
-            [today]: updatedEntry
-          }
-        }
+    try {
+      const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
+      const uid = userId || localStorage.getItem('userId') || '';
+      const sanghaRef = doc(db, 'sanghas', code);
+      const snap = await getDoc(sanghaRef);
+
+      if (!snap.exists()) {
+        setJpsSaving(false);
+        return;
       }
-    });
-    setJpsSaving(false);
+
+      const existing = snap.data();
+      const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
+      const updatedEntry = { ...currentEntry, jps_app: { read: value } };
+      updatedEntry.aggregate_score = calculateScore(updatedEntry);
+
+      await updateDoc(sanghaRef, {
+        [`members.${uid}.daily_entries.${today}`]: updatedEntry,
+      });
+    } catch (err) {
+      console.error('saveJpsApp error:', err);
+    } finally {
+      setJpsSaving(false);
+    }
   };
 
+  // ✅ FIXED: Same updateDoc approach for chanting time
   const saveChantingTime = async (time) => {
     setTimeSaving(true);
-    const bonus = isBonus(time);
-    const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
-    const uid = userId || localStorage.getItem('userId') || '';
-    const sanghaRef = doc(db, 'sanghas', code);
-    const snap = await getDoc(sanghaRef);
-    const existing = snap.data();
-    const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
-    const updatedEntry = { ...currentEntry, chanting_time: { time, bonus } };
-    updatedEntry.aggregate_score = calculateScore(updatedEntry);
-    await setDoc(sanghaRef, {
-      ...existing,
-      members: {
-        ...existing.members,
-        [uid]: {
-          ...existing.members[uid],
-          daily_entries: {
-            ...(existing.members[uid]?.daily_entries || {}),
-            [today]: updatedEntry
-          }
-        }
+    try {
+      const bonus = isBonus(time);
+      const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
+      const uid = userId || localStorage.getItem('userId') || '';
+      const sanghaRef = doc(db, 'sanghas', code);
+      const snap = await getDoc(sanghaRef);
+
+      if (!snap.exists()) {
+        setTimeSaving(false);
+        return;
       }
-    });
-    setTimeSaving(false);
+
+      const existing = snap.data();
+      const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
+      const updatedEntry = { ...currentEntry, chanting_time: { time, bonus } };
+      updatedEntry.aggregate_score = calculateScore(updatedEntry);
+
+      await updateDoc(sanghaRef, {
+        [`members.${uid}.daily_entries.${today}`]: updatedEntry,
+      });
+    } catch (err) {
+      console.error('saveChantingTime error:', err);
+    } finally {
+      setTimeSaving(false);
+    }
   };
 
   const myScore = todayEntry ? calculateScore(todayEntry) : 0;
@@ -461,34 +468,26 @@ export default function Dashboard() {
             <div>
               <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>📱 JPS App</h3>
               <p style={{ margin: 0, fontSize: '13px', color: '#6B6B6B' }}>
-                {jpsRead === true ? '✅ Read today — +5 bonus points!' : jpsRead === false ? '❌ Not read today' : 'Did you read the JPS App today?'}
+                {jpsRead === true ? '✅ Read today — +5 bonus points!' : jpsRead === false ? '❌ Not read today' : 'Did you read JPS App today?'}
               </p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => !jpsSaving && saveJpsApp(true)}
+              <button onClick={() => !jpsSaving && saveJpsApp(true)}
                 style={{
                   padding: '8px 14px', borderRadius: '999px', border: 'none',
-                  background: jpsRead === true ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#f0fdf4',
+                  background: jpsRead === true ? '#22c55e' : '#f0fdf4',
                   color: jpsRead === true ? 'white' : '#22c55e',
                   fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif',
-                  fontWeight: jpsRead === true ? 'bold' : 'normal',
                   opacity: jpsSaving ? 0.6 : 1
-                }}>
-                ✅ Yes
-              </button>
-              <button
-                onClick={() => !jpsSaving && saveJpsApp(false)}
+                }}>✅ Yes</button>
+              <button onClick={() => !jpsSaving && saveJpsApp(false)}
                 style={{
                   padding: '8px 14px', borderRadius: '999px', border: 'none',
-                  background: jpsRead === false ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#fff5f5',
+                  background: jpsRead === false ? '#ef4444' : '#fff5f5',
                   color: jpsRead === false ? 'white' : '#ef4444',
                   fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif',
-                  fontWeight: jpsRead === false ? 'bold' : 'normal',
                   opacity: jpsSaving ? 0.6 : 1
-                }}>
-                ❌ No
-              </button>
+                }}>❌ No</button>
             </div>
           </div>
         </div>
@@ -499,7 +498,7 @@ export default function Dashboard() {
           marginBottom: '12px', boxShadow: '0 4px 20px rgba(255,153,51,0.1)',
           border: '1px solid rgba(255,153,51,0.15)'
         }}>
-          <h3 style={{ margin: '0 0 6px', fontSize: '16px', color: '#2D2D2D' }}>⏰ Chanting Finish Time</h3>
+          <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#2D2D2D' }}>⏰ Chanting Finish Time</h3>
           <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#6B6B6B' }}>
             {chantingTime?.time
               ? `Finished at ${chantingTime.time}${chantingTime.bonus ? ' — 🌟 +3 Brahma-muhurta bonus!' : ''}`
