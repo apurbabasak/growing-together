@@ -117,7 +117,7 @@ export default function ReadingTogether() {
 
   useEffect(() => {
     const uid = localStorage.getItem('userId') || '';
-    const code = localStorage.getItem('sanghaCode') || '';
+    const code = localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
     setUserId(uid);
     userIdRef.current = uid;
     setSanghaCode(code);

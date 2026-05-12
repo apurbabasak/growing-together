@@ -109,7 +109,7 @@ export default function ProgressPage() {
 
   useEffect(() => {
     const uid = localStorage.getItem('userId') || '';
-    const code = localStorage.getItem('sanghaCode') || '';
+    const code = localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
     setUserId(uid);
     setSanghaCode(code);
     if (code) {
