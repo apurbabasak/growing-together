@@ -540,7 +540,7 @@ export default function ReadingTogether() {
             return (
               <div key={uid} style={card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,#FF9933,#FFD700)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '15px' }}>{m.name.charAt(0).toUpperCase()}</div>
+                  {(m.name || 'D').charAt(0).toUpperCase()}
                   <p style={{ margin: 0, fontSize: '14px', color: '#2D2D2D', fontWeight: 'bold' }}>{m.name}{uid === userId ? ' (You)' : ''}</p>
                 </div>
                 {plans.map(plan => {
