@@ -18,11 +18,16 @@ export default function ProfilePage() {
   useEffect(() => {
     const id = localStorage.getItem('userId');
     const name = localStorage.getItem('userName');
-    const sg = localStorage.getItem('sangha') || '';
+    // ✅ FIX: read from 'sanghaCode' (consistent key), fallback to old 'sangha' key
+    const sg = localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
     if (!id || !name) { router.replace('/'); return; }
     setUserId(id);
     setUserName(name);
     setSangha(sg);
+    // ✅ Migrate old 'sangha' key to 'sanghaCode' if needed
+    if (sg && !localStorage.getItem('sanghaCode')) {
+      localStorage.setItem('sanghaCode', sg);
+    }
     fetchUserData(id);
   }, []);
 
@@ -40,6 +45,8 @@ export default function ProfilePage() {
   const handleLogout = () => {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
+    // ✅ FIX: remove both keys to be safe
+    localStorage.removeItem('sanghaCode');
     localStorage.removeItem('sangha');
     router.replace('/');
   };
@@ -52,6 +59,8 @@ export default function ProfilePage() {
       await updateDoc(sanghaRef, { members: arrayRemove(userId) });
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, { sangha: null });
+      // ✅ FIX: remove both keys
+      localStorage.removeItem('sanghaCode');
       localStorage.removeItem('sangha');
       setSangha('');
       setShowLeaveConfirm(false);
@@ -75,7 +84,7 @@ export default function ProfilePage() {
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <div style={styles.avatar}>{userName.charAt(0).toUpperCase()}</div>
+        <div style={styles.avatar}>{(userName || 'D').charAt(0).toUpperCase()}</div>
         <div>
           <div style={styles.name}>{userName}</div>
           <div style={styles.sub}>{sangha ? `Sangha: ${sangha}` : 'No sangha joined'}</div>

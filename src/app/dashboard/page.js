@@ -72,7 +72,6 @@ export default function Dashboard() {
   const [timeSaving, setTimeSaving] = useState(false);
   const audioRef = useRef(null);
 
-  // Keep a ref so save functions always get the latest values
   const sanghaCodeRef = useRef('');
   const userIdRef = useRef('');
   const todayEntryRef = useRef(null);
@@ -105,12 +104,16 @@ export default function Dashboard() {
   useEffect(() => {
     const name = localStorage.getItem('userName') || 'Devotee';
     const uid = localStorage.getItem('userId') || '';
-    const code = localStorage.getItem('sanghaCode') || '';
+    // ✅ FIX: check both keys for compatibility
+    const code = localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
+
     setUserName(name);
     setUserId(uid);
     userIdRef.current = uid;
 
     if (code) {
+      // ✅ Always store under 'sanghaCode' for consistency
+      localStorage.setItem('sanghaCode', code);
       setSanghaCode(code);
       sanghaCodeRef.current = code;
       const unsub = subscribeSangha(code, uid);
@@ -139,11 +142,11 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Core save using updateDoc + dot-notation - reads from refs so never stale
   const doSave = async (patch) => {
-    const code = sanghaCodeRef.current || localStorage.getItem('sanghaCode') || '';
+    const code = sanghaCodeRef.current || localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
     const uid = userIdRef.current || localStorage.getItem('userId') || '';
     if (!code || !uid) {
+      alert('Error: Missing sangha code or user ID. Please log out and log back in.');
       console.error('Missing sanghaCode or userId', { code, uid });
       return;
     }
@@ -198,12 +201,13 @@ export default function Dashboard() {
   const jpsRead = todayEntry?.jps_app?.read;
   const chantingTime = todayEntry?.chanting_time;
 
+  // ✅ FIX: guard against undefined name with fallback
   const sortedMembers = Object.entries(members)
     .map(([uid, m]) => ({
       uid,
-      name: m.name,
-      score: calculateScore(m.daily_entries?.[today] || {}),
-      jpsRead: m.daily_entries?.[today]?.jps_app?.read || false,
+      name: m?.name || 'Devotee',
+      score: calculateScore(m?.daily_entries?.[today] || {}),
+      jpsRead: m?.daily_entries?.[today]?.jps_app?.read || false,
     }))
     .sort((a, b) => b.score - a.score);
 
@@ -302,7 +306,8 @@ export default function Dashboard() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: 'white', fontWeight: 'bold', fontSize: '14px'
               }}>
-                {member.name.charAt(0).toUpperCase()}
+                {/* ✅ FIX: safe charAt with fallback */}
+                {(member.name || 'D').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ margin: 0, fontSize: '14px', color: '#2D2D2D', fontWeight: index === 0 ? 'bold' : 'normal' }}>
