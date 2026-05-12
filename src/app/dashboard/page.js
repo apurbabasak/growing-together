@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import BottomNav from '../components/BottomNav';
 
 function calculateScore(entry) {
@@ -72,6 +72,15 @@ export default function Dashboard() {
   const [timeSaving, setTimeSaving] = useState(false);
   const audioRef = useRef(null);
 
+  // Keep a ref so save functions always get the latest values
+  const sanghaCodeRef = useRef('');
+  const userIdRef = useRef('');
+  const todayEntryRef = useRef(null);
+
+  useEffect(() => { sanghaCodeRef.current = sanghaCode; }, [sanghaCode]);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
+  useEffect(() => { todayEntryRef.current = todayEntry; }, [todayEntry]);
+
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = 0.4;
@@ -87,6 +96,7 @@ export default function Dashboard() {
         setMembers(data.members || {});
         const myEntry = data.members?.[uid]?.daily_entries?.[today] || null;
         setTodayEntry(myEntry);
+        todayEntryRef.current = myEntry;
       }
     });
     return unsub;
@@ -98,9 +108,11 @@ export default function Dashboard() {
     const code = localStorage.getItem('sanghaCode') || '';
     setUserName(name);
     setUserId(uid);
+    userIdRef.current = uid;
 
     if (code) {
       setSanghaCode(code);
+      sanghaCodeRef.current = code;
       const unsub = subscribeSangha(code, uid);
       return () => unsub();
     } else if (uid) {
@@ -115,6 +127,7 @@ export default function Dashboard() {
             if (fetchedCode) {
               localStorage.setItem('sanghaCode', fetchedCode);
               setSanghaCode(fetchedCode);
+              sanghaCodeRef.current = fetchedCode;
               unsub = subscribeSangha(fetchedCode, uid);
             }
           }
@@ -126,91 +139,56 @@ export default function Dashboard() {
     }
   }, []);
 
-  // ✅ FIXED: Use updateDoc with dot-notation to avoid full-document spread hanging
+  // Core save using updateDoc + dot-notation - reads from refs so never stale
+  const doSave = async (patch) => {
+    const code = sanghaCodeRef.current || localStorage.getItem('sanghaCode') || '';
+    const uid = userIdRef.current || localStorage.getItem('userId') || '';
+    if (!code || !uid) {
+      console.error('Missing sanghaCode or userId', { code, uid });
+      return;
+    }
+    const currentEntry = todayEntryRef.current || {};
+    const updatedEntry = { ...currentEntry, ...patch };
+    updatedEntry.aggregate_score = calculateScore(updatedEntry);
+    const sanghaRef = doc(db, 'sanghas', code);
+    await updateDoc(sanghaRef, {
+      [`members.${uid}.daily_entries.${today}`]: updatedEntry,
+    });
+  };
+
   const saveEntry = async (type, data) => {
     setSaving(true);
     try {
-      const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
-      const uid = userId || localStorage.getItem('userId') || '';
-      const sanghaRef = doc(db, 'sanghas', code);
-      const snap = await getDoc(sanghaRef);
-
-      if (!snap.exists()) {
-        setSaving(false);
-        return;
-      }
-
-      const existing = snap.data();
-      const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
-      const updatedEntry = { ...currentEntry, [type]: data };
-      updatedEntry.aggregate_score = calculateScore(updatedEntry);
-
-      // Use dot-notation key to update only this user's today entry — no full spread
-      await updateDoc(sanghaRef, {
-        [`members.${uid}.daily_entries.${today}`]: updatedEntry,
-      });
+      await doSave({ [type]: data });
     } catch (err) {
       console.error('saveEntry error:', err);
+      alert('Save failed: ' + err.message);
     } finally {
       setSaving(false);
       setActiveModal(null);
     }
   };
 
-  // ✅ FIXED: Same updateDoc approach for JPS App
   const saveJpsApp = async (value) => {
     setJpsSaving(true);
     try {
-      const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
-      const uid = userId || localStorage.getItem('userId') || '';
-      const sanghaRef = doc(db, 'sanghas', code);
-      const snap = await getDoc(sanghaRef);
-
-      if (!snap.exists()) {
-        setJpsSaving(false);
-        return;
-      }
-
-      const existing = snap.data();
-      const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
-      const updatedEntry = { ...currentEntry, jps_app: { read: value } };
-      updatedEntry.aggregate_score = calculateScore(updatedEntry);
-
-      await updateDoc(sanghaRef, {
-        [`members.${uid}.daily_entries.${today}`]: updatedEntry,
-      });
+      await doSave({ jps_app: { read: value } });
     } catch (err) {
       console.error('saveJpsApp error:', err);
+      alert('Save failed: ' + err.message);
     } finally {
       setJpsSaving(false);
     }
   };
 
-  // ✅ FIXED: Same updateDoc approach for chanting time
   const saveChantingTime = async (time) => {
     setTimeSaving(true);
     try {
       const bonus = isBonus(time);
-      const code = sanghaCode || localStorage.getItem('sanghaCode') || '';
-      const uid = userId || localStorage.getItem('userId') || '';
-      const sanghaRef = doc(db, 'sanghas', code);
-      const snap = await getDoc(sanghaRef);
-
-      if (!snap.exists()) {
-        setTimeSaving(false);
-        return;
-      }
-
-      const existing = snap.data();
-      const currentEntry = existing?.members?.[uid]?.daily_entries?.[today] || {};
-      const updatedEntry = { ...currentEntry, chanting_time: { time, bonus } };
-      updatedEntry.aggregate_score = calculateScore(updatedEntry);
-
-      await updateDoc(sanghaRef, {
-        [`members.${uid}.daily_entries.${today}`]: updatedEntry,
-      });
+      await doSave({ chanting_time: { time, bonus } });
     } catch (err) {
       console.error('saveChantingTime error:', err);
+      alert('Save failed: ' + err.message);
     } finally {
       setTimeSaving(false);
     }
