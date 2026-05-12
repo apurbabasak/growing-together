@@ -142,7 +142,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  const doSave = async (patch) => {
+const doSave = async (patch) => {
     const code = sanghaCodeRef.current || localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
     const uid = userIdRef.current || localStorage.getItem('userId') || '';
     if (!code || !uid) {
@@ -150,10 +150,13 @@ export default function Dashboard() {
       console.error('Missing sanghaCode or userId', { code, uid });
       return;
     }
-    const currentEntry = todayEntryRef.current || {};
-    const updatedEntry = { ...currentEntry, ...patch };
-    updatedEntry.aggregate_score = calculateScore(updatedEntry);
     const sanghaRef = doc(db, 'sanghas', code);
+    const freshSnap = await getDoc(sanghaRef);
+    const freshEntry = freshSnap.exists()
+      ? (freshSnap.data()?.members?.[uid]?.daily_entries?.[today] || {})
+      : {};
+    const updatedEntry = { ...freshEntry, ...patch };
+    updatedEntry.aggregate_score = calculateScore(updatedEntry);
     await updateDoc(sanghaRef, {
       [`members.${uid}.daily_entries.${today}`]: updatedEntry,
     });
