@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 async function hashPin(pin) {
   const encoder = new TextEncoder();
@@ -14,6 +14,12 @@ async function hashPin(pin) {
 
 function nameToId(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 40);
+}
+
+function generateSanghaCode(name) {
+  const base = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 6);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `${base}${rand}`;
 }
 
 export default function LoginPage() {
@@ -28,6 +34,14 @@ export default function LoginPage() {
   const [success, setSuccess] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
   const [audioReady, setAudioReady] = useState(false);
+
+  // Login: sangha code field
+  const [loginSanghaCode, setLoginSanghaCode] = useState('');
+
+  // Register: sangha choice
+  const [sanghaChoice, setSanghaChoice] = useState(''); // 'create' | 'join'
+  const [joinSanghaCode, setJoinSanghaCode] = useState('');
+  const [createSanghaName, setCreateSanghaName] = useState('');
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -75,10 +89,38 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+
       localStorage.setItem('userId', userId);
       localStorage.setItem('userName', userData.name);
-      // FIX: save as 'sanghaCode' so dashboard can read it
-      if (userData.sangha) localStorage.setItem('sanghaCode', userData.sangha);
+
+      // If user already has a sangha saved, use it
+      let resolvedSangha = userData.sangha || '';
+
+      // If user typed a sangha code on login, try to join it
+      const typedCode = loginSanghaCode.trim().toLowerCase();
+      if (typedCode && typedCode !== resolvedSangha) {
+        const sanghaRef = doc(db, 'sanghas', typedCode);
+        const sanghaSnap = await getDoc(sanghaRef);
+        if (!sanghaSnap.exists()) {
+          setError('Sangha code not found. Please check and try again.');
+          setLoading(false);
+          return;
+        }
+        // Add member to sangha
+        const sanghaData = sanghaSnap.data();
+        const members = sanghaData.members || {};
+        members[userId] = {
+          name: userData.name,
+          joinedAt: new Date().toISOString(),
+          daily_entries: {},
+        };
+        await updateDoc(sanghaRef, { members });
+        // Update user's sangha
+        await updateDoc(userRef, { sangha: typedCode });
+        resolvedSangha = typedCode;
+      }
+
+      if (resolvedSangha) localStorage.setItem('sanghaCode', resolvedSangha);
       setSuccess(`Welcome back, ${userData.name}! 🙏`);
       setTimeout(() => router.replace('/dashboard'), 1000);
     } catch (err) {
@@ -94,6 +136,12 @@ export default function LoginPage() {
       return setError('Please enter your full name (at least 2 characters).');
     if (pin.length < 4) return setError('PIN must be exactly 4 digits.');
     if (pin !== confirmPin) return setError('PINs do not match.');
+    if (!sanghaChoice) return setError('Please choose to create or join a sangha.');
+    if (sanghaChoice === 'join' && !joinSanghaCode.trim())
+      return setError('Please enter the sangha code to join.');
+    if (sanghaChoice === 'create' && !createSanghaName.trim())
+      return setError('Please enter a name for your sangha.');
+
     setLoading(true);
     try {
       const userId = nameToId(name.trim());
@@ -105,16 +153,74 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      await setDoc(userRef, {
-        name: name.trim(),
-        pinHash,
-        createdAt: new Date().toISOString(),
-        sangha: null,
-      });
+
+      let finalSanghaCode = '';
+
+      if (sanghaChoice === 'join') {
+        // Verify sangha exists
+        const code = joinSanghaCode.trim().toLowerCase();
+        const sanghaRef = doc(db, 'sanghas', code);
+        const sanghaSnap = await getDoc(sanghaRef);
+        if (!sanghaSnap.exists()) {
+          setError('Sangha code not found. Please check and try again.');
+          setLoading(false);
+          return;
+        }
+        finalSanghaCode = code;
+        // Create user account
+        await setDoc(userRef, {
+          name: name.trim(),
+          pinHash,
+          createdAt: new Date().toISOString(),
+          sangha: finalSanghaCode,
+        });
+        // Add to sangha members
+        const sanghaData = sanghaSnap.data();
+        const members = sanghaData.members || {};
+        members[userId] = {
+          name: name.trim(),
+          joinedAt: new Date().toISOString(),
+          daily_entries: {},
+        };
+        await updateDoc(sanghaRef, { members });
+
+      } else if (sanghaChoice === 'create') {
+        // Generate sangha code
+        finalSanghaCode = generateSanghaCode(createSanghaName);
+        // Create user account first
+        await setDoc(userRef, {
+          name: name.trim(),
+          pinHash,
+          createdAt: new Date().toISOString(),
+          sangha: finalSanghaCode,
+          isAdmin: true,
+        });
+        // Create the sangha document
+        await setDoc(doc(db, 'sanghas', finalSanghaCode), {
+          name: createSanghaName.trim(),
+          code: finalSanghaCode,
+          adminId: userId,
+          createdAt: new Date().toISOString(),
+          members: {
+            [userId]: {
+              name: name.trim(),
+              joinedAt: new Date().toISOString(),
+              daily_entries: {},
+              isAdmin: true,
+            },
+          },
+        });
+      }
+
       localStorage.setItem('userId', userId);
       localStorage.setItem('userName', name.trim());
-      setSuccess(`Account created! Welcome, ${name.trim()}! 🙏`);
-      setTimeout(() => router.replace('/dashboard'), 1000);
+      if (finalSanghaCode) localStorage.setItem('sanghaCode', finalSanghaCode);
+
+      const successMsg = sanghaChoice === 'create'
+        ? `Account created! Your Sangha code is: ${finalSanghaCode} — share this with members! 🙏`
+        : `Account created! Welcome to the sangha! 🙏`;
+      setSuccess(successMsg);
+      setTimeout(() => router.replace('/dashboard'), 3000);
     } catch (err) {
       setError('Something went wrong. Please try again.');
       console.error(err);
@@ -193,61 +299,42 @@ export default function LoginPage() {
           box-shadow: 0 10px 32px rgba(200,134,10,0.55) !important;
         }
         .submit-btn:active:not(:disabled) { transform: translateY(0); }
+        .sangha-choice-btn {
+          transition: all 0.2s;
+        }
+        .sangha-choice-btn:hover {
+          transform: translateY(-1px);
+        }
       `}</style>
 
       <div style={styles.card}>
 
         {/* Hero section */}
         <div style={{ textAlign: 'center', marginBottom: 6 }} className="anim-down">
-
-          {/* Chakra with glow halo */}
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
             <div className="glow-halo" />
             <img
               src="/chakra.png"
               alt="Sudarshan Chakra"
               style={{
-                width: 164,
-                height: 164,
-                objectFit: 'contain',
-                display: 'block',
-                margin: '0 auto',
-                position: 'relative',
-                zIndex: 1,
-                filter:
-                  'drop-shadow(0 0 20px rgba(255,210,0,0.75)) drop-shadow(0 0 50px rgba(255,140,0,0.45))',
+                width: 164, height: 164, objectFit: 'contain',
+                display: 'block', margin: '0 auto',
+                position: 'relative', zIndex: 1,
+                filter: 'drop-shadow(0 0 20px rgba(255,210,0,0.75)) drop-shadow(0 0 50px rgba(255,140,0,0.45))',
               }}
             />
           </div>
-
-          {/* Title */}
-          <h1
-            className="shimmer-title"
-            style={{
-              fontSize: 23,
-              fontWeight: 800,
-              margin: '0 0 7px',
-              letterSpacing: '0.01em',
-              lineHeight: 1.18,
-              fontFamily: "'Georgia', serif",
-            }}
-          >
+          <h1 className="shimmer-title" style={{
+            fontSize: 23, fontWeight: 800, margin: '0 0 7px',
+            letterSpacing: '0.01em', lineHeight: 1.18,
+            fontFamily: "'Georgia', serif",
+          }}>
             Growing Back to Godhead
           </h1>
-
-          <p style={{
-            fontSize: 13, color: '#c8a060', margin: '0 0 7px',
-            fontStyle: 'italic', letterSpacing: '0.03em',
-            fontFamily: "'Georgia', serif",
-          }}>
+          <p style={{ fontSize: 13, color: '#c8a060', margin: '0 0 7px', fontStyle: 'italic', letterSpacing: '0.03em', fontFamily: "'Georgia', serif" }}>
             Hare Krishna Sādhana Sangha
           </p>
-
-          <p style={{
-            fontSize: 12, color: '#a07030', margin: 0,
-            letterSpacing: '0.06em', fontWeight: 600,
-            fontFamily: "'Georgia', serif",
-          }}>
+          <p style={{ fontSize: 12, color: '#a07030', margin: 0, letterSpacing: '0.06em', fontWeight: 600, fontFamily: "'Georgia', serif" }}>
             हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे
           </p>
         </div>
@@ -259,31 +346,23 @@ export default function LoginPage() {
           <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(200,134,10,0.4))' }} />
         </div>
 
-        {/* Login form */}
         <div className="anim-up">
 
           {/* Tab toggle */}
           <div style={{
-            display: 'flex',
-            background: 'rgba(255,255,255,0.04)',
+            display: 'flex', background: 'rgba(255,255,255,0.04)',
             borderRadius: 12, padding: 4, marginBottom: 20, gap: 4,
             border: '1px solid rgba(200,134,10,0.2)',
           }}>
-            {[
-              { id: 'login', label: 'Log In' },
-              { id: 'register', label: 'New Account' },
-            ].map(({ id, label }) => (
+            {[{ id: 'login', label: 'Log In' }, { id: 'register', label: 'New Account' }].map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => { setMode(id); setError(''); setSuccess(''); }}
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 9, border: 'none',
                   cursor: 'pointer', fontSize: 14, fontWeight: 700,
-                  fontFamily: "'Georgia', serif",
-                  transition: 'all 0.25s',
-                  background: mode === id
-                    ? 'linear-gradient(135deg, #b36800, #FFD700)'
-                    : 'transparent',
+                  fontFamily: "'Georgia', serif", transition: 'all 0.25s',
+                  background: mode === id ? 'linear-gradient(135deg, #b36800, #FFD700)' : 'transparent',
                   color: mode === id ? '#1a0800' : '#c8a060',
                   boxShadow: mode === id ? '0 3px 12px rgba(200,134,10,0.35)' : 'none',
                 }}
@@ -340,15 +419,103 @@ export default function LoginPage() {
                 <div key={i} style={{
                   width: 12, height: 12, borderRadius: '50%',
                   transition: 'all 0.2s ease',
-                  background: pin.length > i
-                    ? 'linear-gradient(135deg, #b36800, #FFD700)'
-                    : 'rgba(255,255,255,0.1)',
+                  background: pin.length > i ? 'linear-gradient(135deg, #b36800, #FFD700)' : 'rgba(255,255,255,0.1)',
                   border: pin.length > i ? 'none' : '1.5px solid rgba(200,134,10,0.3)',
                   transform: pin.length > i ? 'scale(1.3)' : 'scale(1)',
                   boxShadow: pin.length > i ? '0 0 10px rgba(255,215,0,0.55)' : 'none',
                 }} />
               ))}
             </div>
+
+            {/* ── LOGIN: optional sangha code ── */}
+            {mode === 'login' && (
+              <div style={{ marginTop: 12 }}>
+                <label style={styles.label}>Sangha Code <span style={{ color: 'rgba(200,160,96,0.5)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional — enter to join a sangha)</span></label>
+                <input
+                  className="login-input"
+                  type="text"
+                  placeholder="e.g. hare1234"
+                  value={loginSanghaCode}
+                  onChange={(e) => setLoginSanghaCode(e.target.value.toLowerCase())}
+                  style={styles.input}
+                />
+              </div>
+            )}
+
+            {/* ── REGISTER: sangha choice ── */}
+            {mode === 'register' && (
+              <div style={{ marginTop: 16 }}>
+                <label style={{ ...styles.label, marginBottom: 10, display: 'block' }}>Sangha</label>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                  <button
+                    className="sangha-choice-btn"
+                    onClick={() => setSanghaChoice('create')}
+                    style={{
+                      flex: 1, padding: '14px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                      fontFamily: "'Georgia', serif", fontSize: 13, fontWeight: 700,
+                      background: sanghaChoice === 'create'
+                        ? 'linear-gradient(135deg, #b36800, #FFD700)'
+                        : 'rgba(255,255,255,0.06)',
+                      color: sanghaChoice === 'create' ? '#1a0800' : '#c8a060',
+                      boxShadow: sanghaChoice === 'create' ? '0 4px 14px rgba(200,134,10,0.4)' : 'none',
+                      border: sanghaChoice === 'create' ? 'none' : '1px solid rgba(200,134,10,0.2)',
+                    }}
+                  >
+                    🌸 Create My Own Sangha
+                  </button>
+                  <button
+                    className="sangha-choice-btn"
+                    onClick={() => setSanghaChoice('join')}
+                    style={{
+                      flex: 1, padding: '14px 10px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                      fontFamily: "'Georgia', serif", fontSize: 13, fontWeight: 700,
+                      background: sanghaChoice === 'join'
+                        ? 'linear-gradient(135deg, #b36800, #FFD700)'
+                        : 'rgba(255,255,255,0.06)',
+                      color: sanghaChoice === 'join' ? '#1a0800' : '#c8a060',
+                      boxShadow: sanghaChoice === 'join' ? '0 4px 14px rgba(200,134,10,0.4)' : 'none',
+                      border: sanghaChoice === 'join' ? 'none' : '1px solid rgba(200,134,10,0.2)',
+                    }}
+                  >
+                    🙏 Join Existing Sangha
+                  </button>
+                </div>
+
+                {sanghaChoice === 'create' && (
+                  <>
+                    <label style={styles.label}>Sangha Name</label>
+                    <input
+                      className="login-input"
+                      type="text"
+                      placeholder="e.g. Vrindavan Bhaktas"
+                      value={createSanghaName}
+                      onChange={(e) => setCreateSanghaName(e.target.value)}
+                      style={styles.input}
+                    />
+                    <p style={{ fontSize: 11, color: 'rgba(200,160,96,0.5)', marginTop: 6, lineHeight: 1.5 }}>
+                      🔑 A unique sangha code will be generated. Share it with devotees so they can join.
+                    </p>
+                  </>
+                )}
+
+                {sanghaChoice === 'join' && (
+                  <>
+                    <label style={styles.label}>Sangha Code</label>
+                    <input
+                      className="login-input"
+                      type="text"
+                      placeholder="e.g. hare1234"
+                      value={joinSanghaCode}
+                      onChange={(e) => setJoinSanghaCode(e.target.value.toLowerCase())}
+                      style={styles.input}
+                    />
+                    <p style={{ fontSize: 11, color: 'rgba(200,160,96,0.5)', marginTop: 6, lineHeight: 1.5 }}>
+                      📿 Ask your sangha admin for the code.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             {error && (
               <div style={{
@@ -363,7 +530,7 @@ export default function LoginPage() {
               <div style={{
                 background: 'rgba(39,174,96,0.15)', border: '1px solid rgba(39,174,96,0.4)',
                 borderRadius: 10, padding: '10px 14px', color: '#6ee7a0',
-                fontSize: 13, marginTop: 8,
+                fontSize: 13, marginTop: 8, lineHeight: 1.6,
               }}>
                 ✅ {success}
               </div>
@@ -413,15 +580,8 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div style={{
-          textAlign: 'center', marginTop: 20, paddingTop: 14,
-          borderTop: '1px solid rgba(200,134,10,0.12)',
-        }}>
-          <p style={{
-            fontSize: 11, color: 'rgba(200,160,96,0.4)',
-            margin: 0, fontStyle: 'italic',
-            fontFamily: "'Georgia', serif",
-          }}>
+        <div style={{ textAlign: 'center', marginTop: 20, paddingTop: 14, borderTop: '1px solid rgba(200,134,10,0.12)' }}>
+          <p style={{ fontSize: 11, color: 'rgba(200,160,96,0.4)', margin: 0, fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>
             🎵 Tap anywhere to hear the flute
           </p>
         </div>
@@ -435,63 +595,42 @@ const styles = {
   page: {
     minHeight: '100vh',
     background: 'radial-gradient(ellipse at 50% 15%, #261000 0%, #0e0500 45%, #000000 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px 16px',
-    fontFamily: "'Georgia', serif",
-    position: 'relative',
-    overflow: 'hidden',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px 16px', fontFamily: "'Georgia', serif",
+    position: 'relative', overflow: 'hidden',
   },
   card: {
     background: 'linear-gradient(160deg, rgba(28,12,0,0.98) 0%, rgba(16,6,0,0.99) 100%)',
-    borderRadius: 28,
-    padding: '32px 26px 24px',
-    width: '100%',
-    maxWidth: 420,
+    borderRadius: 28, padding: '32px 26px 24px',
+    width: '100%', maxWidth: 420,
     boxShadow: [
       '0 0 0 1px rgba(200,134,10,0.22)',
       '0 32px 90px rgba(0,0,0,0.75)',
       'inset 0 1px 0 rgba(255,215,0,0.07)',
     ].join(', '),
-    position: 'relative',
-    zIndex: 1,
+    position: 'relative', zIndex: 1,
   },
   centered: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#000',
+    minHeight: '100vh', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', background: '#000',
   },
   spinner: {
     width: 40, height: 40,
     border: '3px solid rgba(200,134,10,0.2)',
     borderTop: '3px solid #FFD700',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
+    borderRadius: '50%', animation: 'spin 0.8s linear infinite',
   },
   label: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: '#906820',
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    marginTop: 12,
-    marginBottom: 5,
-    fontFamily: "'Georgia', serif",
+    fontSize: 11, fontWeight: 700, color: '#906820',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
+    marginTop: 12, marginBottom: 5, fontFamily: "'Georgia', serif",
   },
   input: {
-    padding: '13px 15px',
-    borderRadius: 12,
+    padding: '13px 15px', borderRadius: 12,
     border: '1.5px solid rgba(200,134,10,0.28)',
-    fontSize: 16,
-    width: '100%',
-    boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.04)',
-    color: '#f0ddb0',
+    fontSize: 16, width: '100%', boxSizing: 'border-box',
+    background: 'rgba(255,255,255,0.04)', color: '#f0ddb0',
     fontFamily: "'Georgia', serif",
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-    outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s', outline: 'none',
   },
 };
