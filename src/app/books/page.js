@@ -32,6 +32,29 @@ import { useState } from 'react';
 //   SPL → /spl/                             (root only – not fully imported)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// SB chapter verse counts per canto
+const SB_CHAPTER_VERSES = {
+  1:  [23,34,45,33,40,37,58,52,49,45,39,35,60,45,51,36,45,50,40],
+  2:  [37,37,25,25,42,46,53,28,45,51],
+  3:  [45,34,30,35,50,40,40,53,45,42,41,56,49,50,49,37,31,28,38,53,56,39,57,47,44,72,30,44,45,34,48,43,37],
+  4:  [45,35,27,34,26,54,61,82,66,30,35,52,49,46,26,27,36,32,42,38,52,63,39,79,62,26,30,65,85,51,31],
+  5:  [40,23,20,20,35,18,14,31,20,25,17,16,26,46,15,29,24,39,31,46,19,17,9,29,15,40],
+  6:  [58,49,35,54,44,50,40,42,55,32,27,35,23,62,28,57,41,80,27],
+  7:  [50,60,38,46,57,30,58,56,55,69,35,31,49,43,81],
+  8:  [45,33,34,26,48,39,44,45,29,57,48,47,34,21,36,65,28,32,45,34,34,37,32,58],
+  9:  [42,34,36,57,27,55,26,30,47,57,36,16,27,48,41,36,17,52,29,39,36,57,38,68],
+  10: [69,42,53,46,32,44,37,52,23,43,59,44,64,76,84,65,26,78,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100],
+  11: [24,55,55,23,52,30,74,44,32,37,23,24,40,46,36,44,58,48,45,37,43,58,60,29,36,32,55,44,49,49,28],
+  12: [40,44,45,45,14,79,23,55,35,42,49,69,23],
+};
+
+// CC chapter verse counts
+const CC_CHAPTER_VERSES = {
+  adi:    [110,117,113,231,232,115,172,79,55,167,61,73,123,76,31,108,338],
+  madhya: [287,93,215,197,159,277,162,312,361,185,239,211,213,255,298,287,228,224,260,421,143,167,134,351,290],
+  antya:  [212,171,274,231,160,336,168,100,149,158,108,153,136,121,100,148,69,115,113,155],
+};
+
 const BOOKS = [
   // ── MAJOR SCRIPTURES ────────────────────────────────────────────────────────
   {
@@ -40,7 +63,7 @@ const BOOKS = [
     shortTitle: 'BG',
     emoji: '📖',
     category: 'Major Scriptures',
-    urlType: 'chapter-verse',   // /bg/{ch}/{v}/
+    urlType: 'chapter-verse',
     chapters: Array.from({ length: 18 }, (_, i) => ({
       number: i + 1,
       title: [
@@ -73,7 +96,7 @@ const BOOKS = [
     shortTitle: 'SB',
     emoji: '📚',
     category: 'Major Scriptures',
-    urlType: 'canto-chapter-verse',  // /sb/{canto}/{ch}/{v}/
+    urlType: 'canto-chapter-verse',
     cantos: [
       { number: 1, title: 'Creation', chapters: 19 },
       { number: 2, title: 'The Cosmic Manifestation', chapters: 10 },
@@ -96,7 +119,7 @@ const BOOKS = [
     shortTitle: 'CC',
     emoji: '🌸',
     category: 'Major Scriptures',
-    urlType: 'part-chapter-verse',  // /cc/{part}/{ch}/{v}/
+    urlType: 'part-chapter-verse',
     parts: [
       { slug: 'adi', title: 'Ādi-līlā', chapters: 17 },
       { slug: 'madhya', title: 'Madhya-līlā', chapters: 25 },
@@ -110,7 +133,7 @@ const BOOKS = [
     shortTitle: 'BS',
     emoji: '📱',
     category: 'Major Scriptures',
-    urlType: 'bs-verse',  // /bs/5/{verse}/
+    urlType: 'bs-verse',
     verses: 62,
   },
 
@@ -121,7 +144,7 @@ const BOOKS = [
     shortTitle: 'NOI',
     emoji: '💧',
     category: 'Nectar Series',
-    urlType: 'single',   // /noi/{text}/
+    urlType: 'single',
     items: Array.from({ length: 11 }, (_, i) => ({
       number: i + 1,
       title: i === 0 ? 'Introduction' : `Text ${i}`,
@@ -134,7 +157,7 @@ const BOOKS = [
     shortTitle: 'NOD',
     emoji: '🍯',
     category: 'Nectar Series',
-    urlType: 'single',   // /nod/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 46 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -148,7 +171,7 @@ const BOOKS = [
     shortTitle: 'ISO',
     emoji: '🕉️',
     category: 'Yoga & Philosophy',
-    urlType: 'single',   // /iso/{mantra}/
+    urlType: 'single',
     items: [
       { number: 'introduction', title: 'Introduction' },
       ...Array.from({ length: 18 }, (_, i) => ({
@@ -164,7 +187,7 @@ const BOOKS = [
     shortTitle: 'POY',
     emoji: '🧘',
     category: 'Yoga & Philosophy',
-    urlType: 'single',   // /poy/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 9 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -177,7 +200,7 @@ const BOOKS = [
     shortTitle: 'OWK',
     emoji: '🛤️',
     category: 'Yoga & Philosophy',
-    urlType: 'single',   // /owk/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 8 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -190,7 +213,7 @@ const BOOKS = [
     shortTitle: 'RV',
     emoji: '👑',
     category: 'Yoga & Philosophy',
-    urlType: 'single',   // /rv/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 10 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -203,7 +226,7 @@ const BOOKS = [
     shortTitle: 'BBD',
     emoji: '♾️',
     category: 'Yoga & Philosophy',
-    urlType: 'single',   // /bbd/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 8 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -217,7 +240,7 @@ const BOOKS = [
     shortTitle: 'KB',
     emoji: '🦚',
     category: 'Krishna Consciousness',
-    urlType: 'single',   // /kb/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 90 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -230,8 +253,6 @@ const BOOKS = [
     shortTitle: 'KRP',
     emoji: '🌊',
     category: 'Krishna Consciousness',
-    // Single essay — no numbered chapters on vedabase.io
-    // URL: https://vedabase.io/en/library/krp/
     urlType: 'root-only',
   },
 
@@ -241,7 +262,7 @@ const BOOKS = [
     shortTitle: 'TQK',
     emoji: '👸',
     category: 'Krishna Consciousness',
-    urlType: 'single',   // /tqk/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 26 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -254,7 +275,7 @@ const BOOKS = [
     shortTitle: 'TLC',
     emoji: '🌼',
     category: 'Krishna Consciousness',
-    urlType: 'single',   // /tlc/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 34 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -267,7 +288,7 @@ const BOOKS = [
     shortTitle: 'SSR',
     emoji: '🔬',
     category: 'Krishna Consciousness',
-    urlType: 'single',   // /ssr/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 8 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -280,7 +301,7 @@ const BOOKS = [
     shortTitle: 'PQPA',
     emoji: '❓',
     category: 'Krishna Consciousness',
-    urlType: 'single',   // /pqpa/{chapter}/
+    urlType: 'single',
     items: Array.from({ length: 9 }, (_, i) => ({
       number: i + 1,
       title: `Chapter ${i + 1}`,
@@ -294,7 +315,7 @@ const BOOKS = [
     shortTitle: 'LOB',
     emoji: '🌅',
     category: 'Light & Nature',
-    urlType: 'single',   // /lob/{verse}/
+    urlType: 'single',
     items: Array.from({ length: 48 }, (_, i) => ({
       number: i + 1,
       title: `Verse ${i + 1}`,
@@ -307,7 +328,6 @@ const BOOKS = [
     shortTitle: 'LON',
     emoji: '🌿',
     category: 'Light & Nature',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -317,7 +337,6 @@ const BOOKS = [
     shortTitle: 'EJOP',
     emoji: '🚀',
     category: 'Light & Nature',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -328,7 +347,6 @@ const BOOKS = [
     shortTitle: 'MOG',
     emoji: '📜',
     category: 'Devotional Texts',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -338,7 +356,6 @@ const BOOKS = [
     shortTitle: 'CT',
     emoji: '🏛️',
     category: 'Devotional Texts',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -348,7 +365,6 @@ const BOOKS = [
     shortTitle: 'MMS',
     emoji: '🌺',
     category: 'Devotional Texts',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -358,7 +374,6 @@ const BOOKS = [
     shortTitle: 'NBS',
     emoji: '🎵',
     category: 'Devotional Texts',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -368,7 +383,6 @@ const BOOKS = [
     shortTitle: 'CB',
     emoji: '🔄',
     category: 'Devotional Texts',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 
@@ -379,7 +393,6 @@ const BOOKS = [
     shortTitle: 'SPL',
     emoji: '📿',
     category: 'Biography',
-    // Not fully imported on vedabase.io — links to book root
     urlType: 'root-only',
   },
 ];
@@ -391,33 +404,22 @@ function buildUrl(book, item, subItem, subSubItem) {
   const base = 'https://vedabase.io/en/library';
   switch (book.urlType) {
     case 'chapter-verse':
-      // BG: /bg/{chapter}/{verse}/
       if (subItem) return `${base}/${book.id}/${item}/${subItem}/`;
       return `${base}/${book.id}/${item}/`;
-
     case 'canto-chapter-verse':
-      // SB: /sb/{canto}/{chapter}/{verse}/
       if (subSubItem) return `${base}/${book.id}/${item}/${subItem}/${subSubItem}/`;
       if (subItem) return `${base}/${book.id}/${item}/${subItem}/`;
       return `${base}/${book.id}/${item}/`;
-
     case 'part-chapter-verse':
-      // CC: /cc/{part}/{chapter}/{verse}/
       if (subSubItem) return `${base}/${book.id}/${item}/${subItem}/${subSubItem}/`;
       if (subItem) return `${base}/${book.id}/${item}/${subItem}/`;
       return `${base}/${book.id}/${item}/`;
-
     case 'bs-verse':
-      // BS: /bs/5/{verse}/
       return `${base}/${book.id}/5/${item}/`;
-
     case 'root-only':
-      // Books not fully imported — go straight to book root
       return `${base}/${book.id}/`;
-
     case 'single':
     default:
-      // All other books: /{id}/{item}/
       return `${base}/${book.id}/${item}/`;
   }
 }
@@ -436,8 +438,7 @@ export default function BooksPage() {
   const categories = ['All', ...new Set(BOOKS.map((b) => b.category))];
 
   const filteredBooks = BOOKS.filter((book) => {
-    const matchesCategory =
-      selectedCategory === 'All' || book.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory;
     const matchesSearch =
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       book.shortTitle.toLowerCase().includes(searchQuery.toLowerCase());
@@ -454,13 +455,7 @@ export default function BooksPage() {
           const verseNum = i + 1;
           const url = buildUrl(book, chapter, verseNum);
           return (
-            <a
-              key={verseNum}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.verseBtn}
-            >
+            <a key={verseNum} href={url} target="_blank" rel="noopener noreferrer" style={styles.verseBtn}>
               {verseNum}
             </a>
           );
@@ -469,45 +464,82 @@ export default function BooksPage() {
     );
   };
 
-  // ── SB CHAPTER LIST ──────────────────────────────────────────────────────
+  // ── SB CHAPTER LIST with verses ─────────────────────────────────────────
   const renderSbChapters = (canto) => {
+    const verseCountsForCanto = SB_CHAPTER_VERSES[canto.number] || [];
     return (
       <div style={styles.chapterList}>
         {Array.from({ length: canto.chapters }, (_, i) => {
           const chNum = i + 1;
+          const verseCount = verseCountsForCanto[i] || 30;
           return (
-            <button
-              key={chNum}
-              style={styles.chapterBtn}
-              onClick={() =>
-                setSelectedChapter(selectedChapter === chNum ? null : chNum)
-              }
-            >
-              Chapter {chNum}
-            </button>
+            <div key={chNum}>
+              <button
+                style={{
+                  ...styles.chapterBtn,
+                  background: selectedChapter === chNum ? '#ff6b35' : undefined,
+                  color: selectedChapter === chNum ? '#fff' : undefined,
+                }}
+                onClick={() => setSelectedChapter(selectedChapter === chNum ? null : chNum)}
+              >
+                Chapter {chNum}
+                <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>({verseCount} verses)</span>
+              </button>
+              {selectedChapter === chNum && (
+                <div style={{ ...styles.verseGrid, marginLeft: 12, marginTop: 6, marginBottom: 8 }}>
+                  {Array.from({ length: verseCount }, (_, v) => {
+                    const verseNum = v + 1;
+                    const url = buildUrl(selectedBook, canto.number, chNum, verseNum);
+                    return (
+                      <a key={verseNum} href={url} target="_blank" rel="noopener noreferrer" style={styles.verseBtn}>
+                        {verseNum}
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
     );
   };
 
-  // ── CC CHAPTER LIST ──────────────────────────────────────────────────────
+  // ── CC CHAPTER LIST with verses ─────────────────────────────────────────
   const renderCcChapters = (part) => {
+    const verseCountsForPart = CC_CHAPTER_VERSES[part.slug] || [];
     return (
       <div style={styles.chapterList}>
         {Array.from({ length: part.chapters }, (_, i) => {
           const chNum = i + 1;
-          const url = buildUrl(selectedBook, part.slug, chNum);
+          const verseCount = verseCountsForPart[i] || 100;
           return (
-            <a
-              key={chNum}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.chapterBtn}
-            >
-              Chapter {chNum}
-            </a>
+            <div key={chNum}>
+              <button
+                style={{
+                  ...styles.chapterBtn,
+                  background: selectedChapter === chNum ? '#ff6b35' : undefined,
+                  color: selectedChapter === chNum ? '#fff' : undefined,
+                }}
+                onClick={() => setSelectedChapter(selectedChapter === chNum ? null : chNum)}
+              >
+                Chapter {chNum}
+                <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>({verseCount} verses)</span>
+              </button>
+              {selectedChapter === chNum && (
+                <div style={{ ...styles.verseGrid, marginLeft: 12, marginTop: 6, marginBottom: 8 }}>
+                  {Array.from({ length: verseCount }, (_, v) => {
+                    const verseNum = v + 1;
+                    const url = buildUrl(selectedBook, part.slug, chNum, verseNum);
+                    return (
+                      <a key={verseNum} href={url} target="_blank" rel="noopener noreferrer" style={styles.verseBtn}>
+                        {verseNum}
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -519,19 +551,12 @@ export default function BooksPage() {
     const items = book.urlType === 'bs-verse'
       ? Array.from({ length: book.verses }, (_, i) => ({ number: i + 1, title: `Verse ${i + 1}` }))
       : book.items;
-
     return (
       <div style={styles.chapterList}>
         {items.map((item) => {
           const url = buildUrl(book, item.number);
           return (
-            <a
-              key={item.number}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={styles.chapterBtn}
-            >
+            <a key={item.number} href={url} target="_blank" rel="noopener noreferrer" style={styles.chapterBtn}>
               {item.title}
             </a>
           );
@@ -540,7 +565,7 @@ export default function BooksPage() {
     );
   };
 
-  // ── ROOT-ONLY BOOKS (KRP, LON, EJOP, MOG, CT, MMS, NBS, CB, SPL) ─────────
+  // ── ROOT-ONLY BOOKS ───────────────────────────────────────────────────────
   const renderRootOnly = (book) => {
     const url = buildUrl(book);
     return (
@@ -561,14 +586,7 @@ export default function BooksPage() {
         >
           📖 Open {book.shortTitle} on Vedabase
         </a>
-        <p style={{
-          fontSize: 12,
-          color: '#999',
-          textAlign: 'center',
-          marginTop: 10,
-          fontStyle: 'italic',
-          lineHeight: 1.5,
-        }}>
+        <p style={{ fontSize: 12, color: '#999', textAlign: 'center', marginTop: 10, fontStyle: 'italic', lineHeight: 1.5 }}>
           This book opens directly on vedabase.io.{'\n'}
           Chapter navigation is available on the Vedabase website.
         </p>
@@ -612,16 +630,10 @@ export default function BooksPage() {
                   key={ch.number}
                   style={{
                     ...styles.chapterBtn,
-                    background:
-                      selectedChapter === ch.number ? '#ff6b35' : undefined,
-                    color:
-                      selectedChapter === ch.number ? '#fff' : undefined,
+                    background: selectedChapter === ch.number ? '#ff6b35' : undefined,
+                    color: selectedChapter === ch.number ? '#fff' : undefined,
                   }}
-                  onClick={() =>
-                    setSelectedChapter(
-                      selectedChapter === ch.number ? null : ch.number
-                    )
-                  }
+                  onClick={() => setSelectedChapter(selectedChapter === ch.number ? null : ch.number)}
                 >
                   Chapter {ch.number}: {ch.title}
                 </button>
@@ -646,17 +658,11 @@ export default function BooksPage() {
                   key={canto.number}
                   style={{
                     ...styles.chapterBtn,
-                    background:
-                      selectedCanto?.number === canto.number
-                        ? '#ff6b35'
-                        : undefined,
-                    color:
-                      selectedCanto?.number === canto.number ? '#fff' : undefined,
+                    background: selectedCanto?.number === canto.number ? '#ff6b35' : undefined,
+                    color: selectedCanto?.number === canto.number ? '#fff' : undefined,
                   }}
                   onClick={() => {
-                    setSelectedCanto(
-                      selectedCanto?.number === canto.number ? null : canto
-                    );
+                    setSelectedCanto(selectedCanto?.number === canto.number ? null : canto);
                     setSelectedChapter(null);
                   }}
                 >
@@ -666,30 +672,8 @@ export default function BooksPage() {
             </div>
             {selectedCanto && (
               <>
-                <p style={styles.sectionLabel}>Select Chapter</p>
+                <p style={styles.sectionLabel}>Select Chapter → then tap a verse</p>
                 {renderSbChapters(selectedCanto)}
-              </>
-            )}
-            {selectedCanto && selectedChapter && (
-              <>
-                <p style={styles.sectionLabel}>
-                  Opening SB {selectedCanto.number}.{selectedChapter} on Vedabase
-                </p>
-                <a
-                  href={buildUrl(book, selectedCanto.number, selectedChapter)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    ...styles.chapterBtn,
-                    textAlign: 'center',
-                    background: '#fff8f0',
-                    border: '1.5px solid #f0c080',
-                    fontWeight: 600,
-                    color: '#b85c00',
-                  }}
-                >
-                  📖 Open Chapter on Vedabase
-                </a>
               </>
             )}
           </div>
@@ -705,16 +689,13 @@ export default function BooksPage() {
                   key={part.slug}
                   style={{
                     ...styles.chapterBtn,
-                    background:
-                      selectedPart?.slug === part.slug ? '#ff6b35' : undefined,
-                    color:
-                      selectedPart?.slug === part.slug ? '#fff' : undefined,
+                    background: selectedPart?.slug === part.slug ? '#ff6b35' : undefined,
+                    color: selectedPart?.slug === part.slug ? '#fff' : undefined,
                   }}
-                  onClick={() =>
-                    setSelectedPart(
-                      selectedPart?.slug === part.slug ? null : part
-                    )
-                  }
+                  onClick={() => {
+                    setSelectedPart(selectedPart?.slug === part.slug ? null : part);
+                    setSelectedChapter(null);
+                  }}
                 >
                   {part.title} ({part.chapters} chapters)
                 </button>
@@ -722,7 +703,7 @@ export default function BooksPage() {
             </div>
             {selectedPart && (
               <>
-                <p style={styles.sectionLabel}>Select Chapter</p>
+                <p style={styles.sectionLabel}>Select Chapter → then tap a verse</p>
                 {renderCcChapters(selectedPart)}
               </>
             )}
@@ -745,7 +726,7 @@ export default function BooksPage() {
           </>
         )}
 
-        {/* Root-only books (KRP, LON, EJOP, MOG, CT, MMS, NBS, CB, SPL) */}
+        {/* Root-only books */}
         {book.urlType === 'root-only' && (
           <>
             <p style={styles.sectionLabel}>Read on Vedabase</p>
@@ -763,7 +744,6 @@ export default function BooksPage() {
         renderBookDetail()
       ) : (
         <>
-          {/* Search */}
           <div style={styles.searchRow}>
             <input
               type="text"
@@ -774,18 +754,15 @@ export default function BooksPage() {
             />
           </div>
 
-          {/* Category tabs */}
           <div style={styles.catRow}>
             {categories.map((cat) => (
               <button
                 key={cat}
                 style={{
                   ...styles.catBtn,
-                  background:
-                    selectedCategory === cat ? '#ff6b35' : 'transparent',
+                  background: selectedCategory === cat ? '#ff6b35' : 'transparent',
                   color: selectedCategory === cat ? '#fff' : '#555',
-                  borderColor:
-                    selectedCategory === cat ? '#ff6b35' : '#ddd',
+                  borderColor: selectedCategory === cat ? '#ff6b35' : '#ddd',
                 }}
                 onClick={() => setSelectedCategory(cat)}
               >
@@ -794,7 +771,6 @@ export default function BooksPage() {
             ))}
           </div>
 
-          {/* Book grid */}
           <div style={styles.bookGrid}>
             {filteredBooks.map((book) => (
               <button
@@ -816,9 +792,7 @@ export default function BooksPage() {
           </div>
 
           {filteredBooks.length === 0 && (
-            <p style={{ textAlign: 'center', color: '#888', marginTop: 40 }}>
-              No books found.
-            </p>
+            <p style={{ textAlign: 'center', color: '#888', marginTop: 40 }}>No books found.</p>
           )}
         </>
       )}
@@ -838,9 +812,7 @@ const styles = {
     minHeight: '100vh',
     background: '#fdf9f4',
   },
-  searchRow: {
-    marginBottom: 12,
-  },
+  searchRow: { marginBottom: 12 },
   searchInput: {
     width: '100%',
     padding: '10px 14px',
@@ -851,12 +823,7 @@ const styles = {
     boxSizing: 'border-box',
     outline: 'none',
   },
-  catRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
+  catRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   catBtn: {
     padding: '6px 12px',
     borderRadius: 20,
@@ -881,21 +848,9 @@ const styles = {
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
   bookEmoji: { fontSize: 28, marginBottom: 6 },
-  bookShort: {
-    fontWeight: 700,
-    color: '#ff6b35',
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  bookTitle: {
-    fontSize: 12,
-    color: '#333',
-    lineHeight: 1.3,
-    marginBottom: 4,
-  },
+  bookShort: { fontWeight: 700, color: '#ff6b35', fontSize: 13, marginBottom: 4 },
+  bookTitle: { fontSize: 12, color: '#333', lineHeight: 1.3, marginBottom: 4 },
   bookCat: { fontSize: 11, color: '#999' },
-
-  // Detail panel
   detailPanel: {
     background: '#fff',
     borderRadius: 14,
@@ -934,7 +889,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
-    maxHeight: 320,
+    maxHeight: 400,
     overflowY: 'auto',
   },
   chapterBtn: {
