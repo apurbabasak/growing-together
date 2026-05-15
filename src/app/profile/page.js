@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/app/firebase';
-import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -10,42 +10,52 @@ export default function ProfilePage() {
   const [userId, setUserId] = useState('');
   const [sangha, setSangha] = useState('');
   const [userData, setUserData] = useState(null);
+  const [sanghaData, setSanghaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [removingMember, setRemovingMember] = useState(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null);
 
   useEffect(() => {
     const id = localStorage.getItem('userId');
     const name = localStorage.getItem('userName');
-    // ✅ FIX: read from 'sanghaCode' (consistent key), fallback to old 'sangha' key
     const sg = localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
     if (!id || !name) { router.replace('/'); return; }
     setUserId(id);
     setUserName(name);
     setSangha(sg);
-    // ✅ Migrate old 'sangha' key to 'sanghaCode' if needed
     if (sg && !localStorage.getItem('sanghaCode')) {
       localStorage.setItem('sanghaCode', sg);
     }
-    fetchUserData(id);
+    fetchUserData(id, sg);
   }, []);
 
-  const fetchUserData = async (id) => {
+  const fetchUserData = async (id, sg) => {
     try {
       const userRef = doc(db, 'users', id);
       const snap = await getDoc(userRef);
       if (snap.exists()) setUserData(snap.data());
+
+      if (sg) {
+        const sanghaRef = doc(db, 'sanghas', sg);
+        const unsub = onSnapshot(sanghaRef, (sanghaSnap) => {
+          if (sanghaSnap.exists()) setSanghaData(sanghaSnap.data());
+        });
+        // store unsub — cleaned up on unmount via return below
+        return unsub;
+      }
     } catch (err) {
       console.error('Error fetching user data:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
-    // ✅ FIX: remove both keys to be safe
     localStorage.removeItem('sanghaCode');
     localStorage.removeItem('sangha');
     router.replace('/');
@@ -56,13 +66,18 @@ export default function ProfilePage() {
     setLeaving(true);
     try {
       const sanghaRef = doc(db, 'sanghas', sangha);
-      await updateDoc(sanghaRef, { members: arrayRemove(userId) });
+      const sanghaSnap = await getDoc(sanghaRef);
+      if (sanghaSnap.exists()) {
+        const members = { ...sanghaSnap.data().members };
+        delete members[userId];
+        await updateDoc(sanghaRef, { members });
+      }
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, { sangha: null });
-      // ✅ FIX: remove both keys
       localStorage.removeItem('sanghaCode');
       localStorage.removeItem('sangha');
       setSangha('');
+      setSanghaData(null);
       setShowLeaveConfirm(false);
       alert('You have left the sangha. Your account is still active.');
     } catch (err) {
@@ -71,6 +86,36 @@ export default function ProfilePage() {
     }
     setLeaving(false);
   };
+
+  const handleRemoveMember = async (memberIdToRemove) => {
+    if (!sangha || !memberIdToRemove) return;
+    setRemovingMember(memberIdToRemove);
+    try {
+      const sanghaRef = doc(db, 'sanghas', sangha);
+      const sanghaSnap = await getDoc(sanghaRef);
+      if (sanghaSnap.exists()) {
+        const members = { ...sanghaSnap.data().members };
+        delete members[memberIdToRemove];
+        await updateDoc(sanghaRef, { members });
+      }
+      // Also update the removed user's sangha field
+      const removedUserRef = doc(db, 'users', memberIdToRemove);
+      const removedUserSnap = await getDoc(removedUserRef);
+      if (removedUserSnap.exists()) {
+        await updateDoc(removedUserRef, { sangha: null });
+      }
+      setConfirmRemoveId(null);
+    } catch (err) {
+      console.error('Error removing member:', err);
+      alert('Something went wrong. Please try again.');
+    }
+    setRemovingMember(null);
+  };
+
+  const isAdmin = sanghaData?.adminId === userId;
+  const membersList = sanghaData
+    ? Object.entries(sanghaData.members || {}).map(([id, m]) => ({ id, ...m }))
+    : [];
 
   if (loading) {
     return (
@@ -82,12 +127,14 @@ export default function ProfilePage() {
 
   return (
     <div style={styles.page}>
+
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.avatar}>{(userName || 'D').charAt(0).toUpperCase()}</div>
         <div>
           <div style={styles.name}>{userName}</div>
           <div style={styles.sub}>{sangha ? `Sangha: ${sangha}` : 'No sangha joined'}</div>
+          {isAdmin && <div style={{ ...styles.sub, color: '#FF9933', fontWeight: 700 }}>👑 Sangha Admin</div>}
           {userData?.createdAt && (
             <div style={styles.sub}>
               Member since {new Date(userData.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -107,10 +154,91 @@ export default function ProfilePage() {
           <span style={styles.infoValue}>Name + 4-digit PIN</span>
         </div>
         <div style={styles.infoRow}>
-          <span style={styles.infoLabel}>Sangha</span>
+          <span style={styles.infoLabel}>Sangha Code</span>
           <span style={styles.infoValue}>{sangha || '—'}</span>
         </div>
+        {sanghaData?.name && (
+          <div style={styles.infoRow}>
+            <span style={styles.infoLabel}>Sangha Name</span>
+            <span style={styles.infoValue}>{sanghaData.name}</span>
+          </div>
+        )}
       </div>
+
+      {/* ── ADMIN PANEL ── */}
+      {isAdmin && sanghaData && (
+        <div style={{ ...styles.section, borderColor: '#FFD700', background: '#FFFAF0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 20 }}>👑</span>
+            <div style={{ ...styles.sectionTitle, color: '#FF9933' }}>Admin Panel</div>
+          </div>
+
+          {/* Sangha code to share */}
+          <div style={{ background: 'rgba(255,153,51,0.1)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, border: '1px solid rgba(255,153,51,0.3)' }}>
+            <p style={{ margin: '0 0 4px', fontSize: 12, color: '#FF9933', fontWeight: 700 }}>📣 Share this code with devotees to join:</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#2D2D2D', letterSpacing: '0.1em' }}>{sangha}</p>
+          </div>
+
+          <p style={{ ...styles.sectionDesc, marginBottom: 12 }}>
+            {membersList.length} member{membersList.length !== 1 ? 's' : ''} in your sangha. You can remove any member except yourself.
+          </p>
+
+          {membersList.map((member) => {
+            const isYou = member.id === userId;
+            const isConfirming = confirmRemoveId === member.id;
+            return (
+              <div key={member.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 12px', borderRadius: 10, marginBottom: 8,
+                background: 'white', border: '1px solid #FFE0B0',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: isYou ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#f0e8e0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: isYou ? 'white' : '#888', fontWeight: 700, fontSize: 15, flexShrink: 0,
+                }}>
+                  {(member.name || 'D').charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#2D2D2D' }}>
+                    {member.name || 'Devotee'} {isYou ? '(You)' : ''}
+                    {member.isAdmin && <span style={{ fontSize: 11, color: '#FF9933', marginLeft: 6 }}>👑 Admin</span>}
+                  </p>
+                  {member.joinedAt && (
+                    <p style={{ margin: 0, fontSize: 11, color: '#888' }}>
+                      Joined {new Date(member.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+                {!isYou && (
+                  isConfirming ? (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => setConfirmRemoveId(null)}
+                        style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#f0e8e0', color: '#888', fontSize: 12, cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleRemoveMember(member.id)}
+                        disabled={removingMember === member.id}
+                        style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#ef4444', color: 'white', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>
+                        {removingMember === member.id ? '...' : 'Remove'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRemoveId(member.id)}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #ffccc0', background: '#fff5f0', color: '#e67e22', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                      Remove
+                    </button>
+                  )
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Logout section */}
       <div style={styles.section}>
@@ -122,7 +250,7 @@ export default function ProfilePage() {
           <button style={styles.logoutBtn} onClick={() => setShowLogoutConfirm(true)}>🔓 Log Out</button>
         ) : (
           <div style={styles.confirmBox}>
-            <p style={styles.confirmText}>Are you sure you want to log out? You can log back in with your name and PIN.</p>
+            <p style={styles.confirmText}>Are you sure you want to log out?</p>
             <div style={styles.confirmRow}>
               <button style={styles.cancelBtn} onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
               <button style={styles.confirmLogoutBtn} onClick={handleLogout}>Yes, Log Out</button>
@@ -132,7 +260,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Leave Sangha section */}
-      {sangha && (
+      {sangha && !isAdmin && (
         <div style={{ ...styles.section, borderColor: '#ffe0cc' }}>
           <div style={{ ...styles.sectionTitle, color: '#e67e22' }}>Leave Sangha</div>
           <p style={styles.sectionDesc}>
@@ -164,12 +292,13 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }
 
 const styles = {
-  page: { padding: '20px 16px', maxWidth: 500, margin: '0 auto', fontFamily: "'Georgia', serif", minHeight: '100vh', background: '#fdf9f4' },
+  page: { padding: '20px 16px 100px', maxWidth: 500, margin: '0 auto', fontFamily: "'Georgia', serif", minHeight: '100vh', background: '#fdf9f4' },
   centered: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   spinner: { width: 36, height: 36, border: '3px solid #f0e8e0', borderTop: '3px solid #ff6b35', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
   header: { display: 'flex', alignItems: 'center', gap: 16, background: '#fff', borderRadius: 16, padding: '20px', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
