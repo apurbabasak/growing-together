@@ -2,8 +2,38 @@
 export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, updateDoc } from 'firebase/firestore';
 import BottomNav from '../components/BottomNav';
+
+const SERVICES = [
+  { id: 'yatra', label: '🚶 Yatra' },
+  { id: 'cooking', label: '🍳 Cooking' },
+  { id: 'cutting', label: '🥬 Cutting Fruits & Vegetables' },
+  { id: 'seva_of_guru', label: '🙏 Seva of Guru Maharaj' },
+  { id: 'deity_worship', label: '🪷 Deity Worship' },
+  { id: 'temple_visit', label: '🛕 Temple Visit' },
+  { id: 'fasting', label: '⚡ Fasting' },
+  { id: 'vaisnava_seva', label: '🌸 Vaisnava Seva' },
+  { id: 'donation', label: '💛 Donation' },
+  { id: 'family_service', label: '👨‍👩‍👧 Service to Family' },
+  { id: 'others', label: '✨ Others' },
+];
+
+const CHANTING_TIMES = [
+  '04:00','04:15','04:30','04:45',
+  '05:00','05:15','05:30','05:45',
+  '06:00','06:15','06:30','06:45',
+  '07:00','07:15','07:30','07:45',
+  '08:00','08:15','08:30','08:45',
+  '09:00','09:15','09:30','09:45',
+  '10:00','10:30','11:00','12:00','After 12'
+];
+
+function isBonus(time) {
+  if (time === 'After 12') return false;
+  const h = Number(time.split(':')[0]);
+  return h >= 4 && h < 9;
+}
 
 function calculateScore(entry) {
   if (!entry) return 0;
@@ -28,7 +58,6 @@ function calculateScore(entry) {
   return Math.round(total * 10) / 10;
 }
 
-// Build CSV content for a member's progress report
 function buildCSV(name, memberEntries, allDates) {
   const memberDates = allDates.filter(d => memberEntries[d]);
   const headers = ['Date', 'Day', 'Chanting Rounds', 'Reading (min)', 'Reading Topic', 'Hearing (min)', 'Devotional Service', 'JPS App', 'Chanting Time', 'Chanting Bonus', 'Score /108'];
@@ -47,8 +76,6 @@ function buildCSV(name, memberEntries, allDates) {
     const dayName = dateObj.toLocaleDateString('en-IN', { weekday: 'short' });
     return [date, dayName, rounds, readMins, readTopic, hearMins, services, jps, chTime, chBonus, score];
   });
-
-  // Summary row
   const doneFull = memberDates.filter(d => (memberEntries[d]?.chanting?.rounds_completed || 0) >= 16).length;
   const doneRead = memberDates.filter(d => memberEntries[d]?.reading?.minutes > 0).length;
   const doneHear = memberDates.filter(d => memberEntries[d]?.hearing?.minutes > 0).length;
@@ -57,7 +84,6 @@ function buildCSV(name, memberEntries, allDates) {
   const doneBonus = memberDates.filter(d => memberEntries[d]?.chanting_time?.bonus === true).length;
   const totalScore = memberDates.reduce((s, d) => s + calculateScore(memberEntries[d]), 0);
   const avgScore = memberDates.length > 0 ? (totalScore / memberDates.length).toFixed(1) : '0.0';
-
   const allRows = [
     [`SADHANA PROGRESS REPORT — ${name}`],
     [`Generated on: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`],
@@ -76,10 +102,8 @@ function buildCSV(name, memberEntries, allDates) {
     ['Early chanting bonus days', doneBonus],
     ['Average score /108', avgScore],
   ];
-
   return allRows.map(row => row.map(cell => {
     const str = String(cell ?? '');
-    // Escape cells with commas, quotes, or newlines
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
       return `"${str.replace(/"/g, '""')}"`;
     }
@@ -88,7 +112,7 @@ function buildCSV(name, memberEntries, allDates) {
 }
 
 function downloadCSV(csvContent, filename) {
-  const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+  const BOM = '\uFEFF';
   const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -107,6 +131,22 @@ export default function ProgressPage() {
   const [allDates, setAllDates] = useState([]);
   const [selectedMember, setSelectedMember] = useState('all');
   const [loading, setLoading] = useState(true);
+
+  // ── EDIT MODAL STATE ──
+  const [editModal, setEditModal] = useState(false);
+  const [editDate, setEditDate] = useState('');
+  const [editForm, setEditForm] = useState({
+    rounds: 0,
+    readTopic: '',
+    readMins: 0,
+    hearDesc: '',
+    hearMins: 0,
+    activities: [],
+    otherText: '',
+    jpsRead: null,
+    chantingTime: '',
+  });
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     const uid = localStorage.getItem('userId') || '';
@@ -135,6 +175,59 @@ export default function ProgressPage() {
     }
   }, []);
 
+  // ── OPEN EDIT MODAL ──
+  const openEdit = (date) => {
+    const entry = members[userId]?.daily_entries?.[date] || {};
+    setEditDate(date);
+    setEditForm({
+      rounds: entry.chanting?.rounds_completed || 0,
+      readTopic: entry.reading?.topic || '',
+      readMins: entry.reading?.minutes || 0,
+      hearDesc: entry.hearing?.description || '',
+      hearMins: entry.hearing?.minutes || 0,
+      activities: entry.devotional_service?.activities || [],
+      otherText: entry.devotional_service?.other_text || '',
+      jpsRead: entry.jps_app?.read ?? null,
+      chantingTime: entry.chanting_time?.time || '',
+    });
+    setEditModal(true);
+  };
+
+  // ── SAVE EDIT ──
+  const saveEdit = async () => {
+    if (!editDate || !sanghaCode || !userId) return;
+    setEditSaving(true);
+    try {
+      const sanghaRef = doc(db, 'sanghas', sanghaCode);
+      const freshSnap = await getDoc(sanghaRef);
+      const freshEntry = freshSnap.exists()
+        ? (freshSnap.data()?.members?.[userId]?.daily_entries?.[editDate] || {})
+        : {};
+
+      const bonus = editForm.chantingTime ? isBonus(editForm.chantingTime) : false;
+
+      const updatedEntry = {
+        ...freshEntry,
+        chanting: { rounds_completed: editForm.rounds, target_rounds: 16 },
+        reading: { topic: editForm.readTopic, minutes: editForm.readMins },
+        hearing: { description: editForm.hearDesc, minutes: editForm.hearMins },
+        devotional_service: { activities: editForm.activities, other_text: editForm.otherText },
+        jps_app: { read: editForm.jpsRead },
+        chanting_time: editForm.chantingTime ? { time: editForm.chantingTime, bonus } : (freshEntry.chanting_time || {}),
+      };
+      updatedEntry.aggregate_score = calculateScore(updatedEntry);
+
+      await updateDoc(sanghaRef, {
+        [`members.${userId}.daily_entries.${editDate}`]: updatedEntry,
+      });
+      setEditModal(false);
+    } catch (err) {
+      console.error('Edit save error:', err);
+      alert('Save failed: ' + err.message);
+    }
+    setEditSaving(false);
+  };
+
   const memberList = Object.entries(members).map(([uid, m]) => ({ uid, name: m.name }));
   const filteredMembers = selectedMember === 'all' ? memberList : memberList.filter(m => m.uid === selectedMember);
 
@@ -146,7 +239,6 @@ export default function ProgressPage() {
   };
 
   const handleDownloadAll = () => {
-    // Download all members in one file
     let combined = `ALL MEMBERS SADHANA REPORT\nGenerated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}\n\n`;
     memberList.forEach(({ uid, name }) => {
       const memberEntries = members[uid]?.daily_entries || {};
@@ -176,6 +268,14 @@ export default function ProgressPage() {
     display: 'inline-block', padding: '2px 7px', borderRadius: '999px',
     background: bg, color: color, fontSize: '11px', fontWeight: 'bold',
   });
+
+  const inp = {
+    width: '100%', padding: '10px 12px', borderRadius: '10px',
+    border: '1.5px solid #FFD700', fontSize: '14px',
+    fontFamily: 'Georgia, serif', outline: 'none',
+    color: '#2D2D2D', background: '#FFFAF5',
+    boxSizing: 'border-box', marginBottom: '10px',
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #FFF8F0, #FFF0E0)', fontFamily: 'Georgia, serif', paddingBottom: '100px' }}>
@@ -263,6 +363,7 @@ export default function ProgressPage() {
           const totalScore = memberDates.reduce((sum, d) => sum + calculateScore(memberEntries[d]), 0);
           const avgScore = memberDates.length > 0 ? (totalScore / memberDates.length).toFixed(1) : 0;
           const completeDays = memberDates.filter(d => calculateScore(memberEntries[d]) >= 90).length;
+          const isMe = uid === userId;
 
           return (
             <div key={uid} style={{ marginBottom: '24px' }}>
@@ -273,10 +374,9 @@ export default function ProgressPage() {
                   {name.charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: '0 0 2px', fontSize: '15px', color: '#2D2D2D', fontWeight: 'bold' }}>{name}{uid === userId ? ' (You)' : ''}</p>
+                  <p style={{ margin: '0 0 2px', fontSize: '15px', color: '#2D2D2D', fontWeight: 'bold' }}>{name}{isMe ? ' (You)' : ''}</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#6B6B6B' }}>{memberDates.length} days logged · Avg {avgScore}/108 · {completeDays} excellent days</p>
                 </div>
-                {/* Per-member download button */}
                 <button onClick={() => handleDownload(uid, name)}
                   style={{ padding: '8px 12px', borderRadius: '999px', background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                   ⬇️ Excel
@@ -295,7 +395,8 @@ export default function ProgressPage() {
                       <th style={headerStyle}>🪷 Service</th>
                       <th style={headerStyle}>📱 JPS App</th>
                       <th style={headerStyle}>⏰ Chant Time</th>
-                      <th style={{ ...headerStyle, borderRight: 'none' }}>🏆 Score</th>
+                      <th style={headerStyle}>🏆 Score</th>
+                      {isMe && <th style={{ ...headerStyle, borderRight: 'none' }}>✏️ Edit</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -327,9 +428,7 @@ export default function ProgressPage() {
                           </td>
                           <td style={cellStyle(alt)}>
                             {rounds > 0 ? (
-                              <span style={badgeStyle(rounds >= 16 ? '#16a34a' : '#FF9933', rounds >= 16 ? '#f0fdf4' : '#FFF5E0')}>
-                                {rounds} rds
-                              </span>
+                              <span style={badgeStyle(rounds >= 16 ? '#16a34a' : '#FF9933', rounds >= 16 ? '#f0fdf4' : '#FFF5E0')}>{rounds} rds</span>
                             ) : <span style={{ color: '#ccc', fontSize: '14px' }}>—</span>}
                           </td>
                           <td style={cellStyle(alt)}>
@@ -368,11 +467,20 @@ export default function ProgressPage() {
                               </div>
                             ) : <span style={{ color: '#ccc', fontSize: '14px' }}>—</span>}
                           </td>
-                          <td style={{ ...cellStyle(alt), borderRight: 'none' }}>
+                          <td style={cellStyle(alt)}>
                             <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '999px', background: scoreBg, color: scoreColor, fontSize: '13px', fontWeight: 'bold' }}>
                               {score}
                             </span>
                           </td>
+                          {isMe && (
+                            <td style={{ ...cellStyle(alt), borderRight: 'none' }}>
+                              <button
+                                onClick={() => openEdit(date)}
+                                style={{ padding: '5px 10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #FF9933, #FFD700)', color: 'white', fontSize: '11px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                                ✏️ Edit
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -398,9 +506,10 @@ export default function ProgressPage() {
                       <td style={{ padding: '10px 8px', fontSize: '11px', color: '#6B6B6B', textAlign: 'center', borderTop: '2px solid #FFD700' }}>
                         {memberDates.filter(d => memberEntries[d]?.chanting_time?.bonus === true).length}d bonus
                       </td>
-                      <td style={{ padding: '10px 8px', fontSize: '12px', fontWeight: 'bold', color: '#FF9933', textAlign: 'center', borderTop: '2px solid #FFD700', borderRight: 'none' }}>
+                      <td style={{ padding: '10px 8px', fontSize: '12px', fontWeight: 'bold', color: '#FF9933', textAlign: 'center', borderTop: '2px solid #FFD700' }}>
                         avg {avgScore}
                       </td>
+                      {isMe && <td style={{ borderTop: '2px solid #FFD700', borderRight: 'none' }} />}
                     </tr>
                   </tfoot>
                 </table>
@@ -409,6 +518,117 @@ export default function ProgressPage() {
           );
         })}
       </div>
+
+      {/* ── EDIT MODAL ── */}
+      {editModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+          onClick={() => setEditModal(false)}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '24px 20px', width: '100%', maxWidth: '480px', maxHeight: '88vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+
+            <h3 style={{ margin: '0 0 4px', fontSize: '18px', color: '#2D2D2D' }}>✏️ Edit Sadhana</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#FF9933', fontWeight: 'bold' }}>
+              {new Date(editDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+
+            {/* Chanting */}
+            <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>🕉️ Chanting Rounds</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {[4,8,12,16,20,25,32].map(n => (
+                <button key={n} onClick={() => setEditForm({...editForm, rounds: n})}
+                  style={{ padding: '7px 14px', borderRadius: '999px', border: 'none', background: editForm.rounds === n ? 'linear-gradient(135deg,#FF9933,#FFD700)' : '#FFF0E0', color: editForm.rounds === n ? 'white' : '#FF9933', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>{n}</button>
+              ))}
+            </div>
+            <input type="number" min="0" max="64" value={editForm.rounds}
+              onChange={e => setEditForm({...editForm, rounds: parseInt(e.target.value)||0})}
+              style={{ ...inp, textAlign: 'center', fontSize: '20px' }} />
+
+            {/* Reading */}
+            <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>📖 Reading Topic</p>
+            <input type="text" placeholder="e.g. Bhagavad Gita Chapter 2" value={editForm.readTopic}
+              onChange={e => setEditForm({...editForm, readTopic: e.target.value})} style={inp} />
+            <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>📖 Reading Minutes</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {[10,15,20,30,45,60].map(n => (
+                <button key={n} onClick={() => setEditForm({...editForm, readMins: n})}
+                  style={{ padding: '7px 14px', borderRadius: '999px', border: 'none', background: editForm.readMins === n ? 'linear-gradient(135deg,#FF9933,#FFD700)' : '#FFF0E0', color: editForm.readMins === n ? 'white' : '#FF9933', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>{n}</button>
+              ))}
+            </div>
+            <input type="number" min="0" value={editForm.readMins}
+              onChange={e => setEditForm({...editForm, readMins: parseInt(e.target.value)||0})}
+              style={{ ...inp, textAlign: 'center', fontSize: '20px' }} />
+
+            {/* Hearing */}
+            <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>🎧 Hearing Description</p>
+            <textarea placeholder="e.g. Srila Prabhupada lecture" value={editForm.hearDesc}
+              onChange={e => setEditForm({...editForm, hearDesc: e.target.value})}
+              rows={2} style={{ ...inp, resize: 'none' }} />
+            <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>🎧 Hearing Minutes</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              {[10,15,20,30,45,60].map(n => (
+                <button key={n} onClick={() => setEditForm({...editForm, hearMins: n})}
+                  style={{ padding: '7px 14px', borderRadius: '999px', border: 'none', background: editForm.hearMins === n ? 'linear-gradient(135deg,#FF9933,#FFD700)' : '#FFF0E0', color: editForm.hearMins === n ? 'white' : '#FF9933', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>{n}</button>
+              ))}
+            </div>
+            <input type="number" min="0" value={editForm.hearMins}
+              onChange={e => setEditForm({...editForm, hearMins: parseInt(e.target.value)||0})}
+              style={{ ...inp, textAlign: 'center', fontSize: '20px' }} />
+
+            {/* Devotional Service */}
+            <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>🪷 Devotional Service</p>
+            {SERVICES.map(service => {
+              const selected = editForm.activities.includes(service.id);
+              return (
+                <button key={service.id}
+                  onClick={() => {
+                    const acts = editForm.activities;
+                    const updated = selected ? acts.filter(a => a !== service.id) : [...acts, service.id];
+                    setEditForm({...editForm, activities: updated});
+                  }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', marginBottom: '6px', background: selected ? 'linear-gradient(135deg,#FF9933,#FFD700)' : '#FFFAF5', border: `1.5px solid ${selected ? '#FF9933' : '#FFE0B0'}`, color: selected ? 'white' : '#2D2D2D', fontSize: '13px', cursor: 'pointer', textAlign: 'left' }}>
+                  {service.label}
+                </button>
+              );
+            })}
+
+            {/* JPS App */}
+            <p style={{ margin: '10px 0 8px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>📱 JPS App</p>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+              <button onClick={() => setEditForm({...editForm, jpsRead: true})}
+                style={{ flex: 1, padding: '10px', borderRadius: '999px', border: 'none', background: editForm.jpsRead === true ? '#22c55e' : '#f0fdf4', color: editForm.jpsRead === true ? 'white' : '#22c55e', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>✅ Yes</button>
+              <button onClick={() => setEditForm({...editForm, jpsRead: false})}
+                style={{ flex: 1, padding: '10px', borderRadius: '999px', border: 'none', background: editForm.jpsRead === false ? '#ef4444' : '#fff5f5', color: editForm.jpsRead === false ? 'white' : '#ef4444', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>❌ No</button>
+            </div>
+
+            {/* Chanting Time */}
+            <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 'bold', color: '#2D2D2D' }}>⏰ Chanting Finish Time</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+              {CHANTING_TIMES.map(time => {
+                const selected = editForm.chantingTime === time;
+                const bonus = isBonus(time);
+                return (
+                  <button key={time} onClick={() => setEditForm({...editForm, chantingTime: time})}
+                    style={{ padding: '7px 10px', borderRadius: '999px', border: bonus && !selected ? '1px solid #86efac' : 'none', background: selected ? (bonus ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'linear-gradient(135deg,#FF9933,#FFD700)') : (bonus ? '#f0fdf4' : '#FFF0E0'), color: selected ? 'white' : bonus ? '#22c55e' : '#FF9933', fontSize: '12px', cursor: 'pointer', fontWeight: selected ? 'bold' : 'normal' }}>
+                    {time}{bonus ? ' ⭐' : ''}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setEditModal(false)}
+                style={{ flex: 1, padding: '13px', borderRadius: '999px', background: '#FFF0E0', border: 'none', color: '#FF9933', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Cancel</button>
+              <button onClick={saveEdit} disabled={editSaving}
+                style={{ flex: 2, padding: '13px', borderRadius: '999px', background: editSaving ? '#ccc' : 'linear-gradient(135deg,#FF9933,#FFD700)', border: 'none', color: 'white', fontSize: '15px', cursor: 'pointer', fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                {editSaving ? '⏳ Saving...' : '✅ Save Changes'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   );
