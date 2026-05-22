@@ -148,6 +148,9 @@ export default function ProgressPage() {
   });
   const [editSaving, setEditSaving] = useState(false);
 
+  // ── MISSED DATE PICKER STATE ──
+  const [missedDate, setMissedDate] = useState('');
+
   useEffect(() => {
     const uid = localStorage.getItem('userId') || '';
     const code = localStorage.getItem('sanghaCode') || localStorage.getItem('sangha') || '';
@@ -191,6 +194,13 @@ export default function ProgressPage() {
       chantingTime: entry.chanting_time?.time || '',
     });
     setEditModal(true);
+  };
+
+  // ── OPEN MISSED DATE ──
+  const openMissedDate = () => {
+    if (!missedDate) return;
+    openEdit(missedDate);
+    setMissedDate('');
   };
 
   // ── SAVE EDIT ──
@@ -277,6 +287,8 @@ export default function ProgressPage() {
     boxSizing: 'border-box', marginBottom: '10px',
   };
 
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #FFF8F0, #FFF0E0)', fontFamily: 'Georgia, serif', paddingBottom: '100px' }}>
 
@@ -287,6 +299,27 @@ export default function ProgressPage() {
       </div>
 
       <div style={{ padding: '0 12px' }}>
+
+        {/* ── LOG A MISSED DATE ── */}
+        <div style={{ background: 'white', borderRadius: '16px', padding: '14px 16px', marginBottom: '14px', boxShadow: '0 2px 12px rgba(255,153,51,0.1)', border: '1px solid rgba(255,153,51,0.15)' }}>
+          <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 'bold', color: '#2D2D2D' }}>📅 Log a Missed Date</p>
+          <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#6B6B6B' }}>Forgot to log sadhana on a previous day? Pick the date and enter your details.</p>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input
+              type="date"
+              value={missedDate}
+              max={today}
+              onChange={e => setMissedDate(e.target.value)}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #FFD700', fontSize: '14px', fontFamily: 'Georgia, serif', outline: 'none', color: '#2D2D2D', background: '#FFFAF5' }}
+            />
+            <button
+              onClick={openMissedDate}
+              disabled={!missedDate}
+              style={{ padding: '10px 18px', borderRadius: '999px', border: 'none', background: missedDate ? 'linear-gradient(135deg, #FF9933, #FFD700)' : '#ccc', color: 'white', fontSize: '14px', cursor: missedDate ? 'pointer' : 'not-allowed', fontFamily: 'Georgia, serif', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+              ✏️ Log It
+            </button>
+          </div>
+        </div>
 
         {/* Filter tabs */}
         <div style={{ marginBottom: '14px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -403,7 +436,7 @@ export default function ProgressPage() {
                     {memberDates.map((date, idx) => {
                       const e = memberEntries[date] || {};
                       const score = calculateScore(e);
-                      const isToday = date === new Date().toISOString().split('T')[0];
+                      const isToday = date === today;
                       const alt = idx % 2 === 0;
                       const rounds = e.chanting?.rounds_completed || 0;
                       const readMins = e.reading?.minutes || 0;
